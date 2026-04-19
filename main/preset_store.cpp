@@ -102,7 +102,7 @@ bool saveUserPresetBlob(const String& rawName, const PersistedConfig* sourceCfg,
     if (slot < 0) {
         if (dir.count >= kMaxUserPresets) {
             if (errorOut) {
-                *errorOut = "Limite presets atteinte";
+                *errorOut = "Preset limit reached";
             }
             return false;
         }
@@ -115,7 +115,7 @@ bool saveUserPresetBlob(const String& rawName, const PersistedConfig* sourceCfg,
     esp_err_t err = nvs_open("rcctl", NVS_READWRITE, &handle);
     if (err != ESP_OK) {
         if (errorOut) {
-            *errorOut = "NVS indisponible";
+            *errorOut = "NVS unavailable";
         }
         return false;
     }
@@ -131,7 +131,7 @@ bool saveUserPresetBlob(const String& rawName, const PersistedConfig* sourceCfg,
 
     if (err != ESP_OK) {
         if (errorOut) {
-            *errorOut = "Echec sauvegarde preset";
+            *errorOut = "Failed to save preset";
         }
         return false;
     }
@@ -148,7 +148,7 @@ bool loadUserPreset(const String& rawName, PersistedConfig* out, String* errorOu
     const int slot = findPresetSlotByName(dir, name);
     if (slot < 0) {
         if (errorOut) {
-            *errorOut = "Preset inconnu";
+            *errorOut = "Unknown preset";
         }
         return false;
     }
@@ -157,7 +157,7 @@ bool loadUserPreset(const String& rawName, PersistedConfig* out, String* errorOu
     esp_err_t err = nvs_open("rcctl", NVS_READONLY, &handle);
     if (err != ESP_OK) {
         if (errorOut) {
-            *errorOut = "NVS indisponible";
+            *errorOut = "NVS unavailable";
         }
         return false;
     }
@@ -168,19 +168,19 @@ bool loadUserPreset(const String& rawName, PersistedConfig* out, String* errorOu
     nvs_close(handle);
     if (err != ESP_OK || len != sizeof(cfg)) {
         if (errorOut) {
-            *errorOut = "Preset corrompu";
+            *errorOut = "Preset corrupted";
         }
         return false;
     }
     if (cfg.magic != kConfigMagic) {
         if (errorOut) {
-            *errorOut = "Preset corrompu (magic invalide)";
+            *errorOut = "Preset corrupted (invalid magic)";
         }
         return false;
     }
     if (cfg.version != kConfigVersion) {
         if (errorOut) {
-            *errorOut = "Preset obsolete (format change apres mise a jour)";
+            *errorOut = "Preset obsolete (format changed after update)";
         }
         return false;
     }
@@ -195,7 +195,7 @@ bool deleteUserPreset(const String& rawName, String* errorOut) {
     const int slot = findPresetSlotByName(dir, name);
     if (slot < 0) {
         if (errorOut) {
-            *errorOut = "Preset inconnu";
+            *errorOut = "Unknown preset";
         }
         return false;
     }
@@ -204,7 +204,7 @@ bool deleteUserPreset(const String& rawName, String* errorOut) {
     esp_err_t err = nvs_open("rcctl", NVS_READWRITE, &handle);
     if (err != ESP_OK) {
         if (errorOut) {
-            *errorOut = "NVS indisponible";
+            *errorOut = "NVS unavailable";
         }
         return false;
     }
@@ -241,7 +241,7 @@ bool deleteUserPreset(const String& rawName, String* errorOut) {
         if (err != ESP_OK) {
             nvs_close(handle);
             if (errorOut) {
-                *errorOut = "Echec suppression preset";
+                *errorOut = "Failed to delete preset";
             }
             return false;
         }
@@ -264,7 +264,7 @@ bool deleteUserPreset(const String& rawName, String* errorOut) {
     nvs_close(handle);
     if (err != ESP_OK) {
         if (errorOut) {
-            *errorOut = "Echec suppression preset";
+            *errorOut = "Failed to delete preset";
         }
         return false;
     }

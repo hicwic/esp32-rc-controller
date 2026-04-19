@@ -167,8 +167,8 @@ Screenshot (click to zoom):
 
 Possible cases:
 
-- `Preset obsolete (format change apres mise a jour)`: preset was created with an older incompatible schema.
-- `Preset corrompu (...)`: stored blob is invalid.
+- `Preset obsolete (format changed after update)`: preset was created with an older incompatible schema.
+- `Preset corrupted (...)`: stored blob is invalid.
 
 You can delete invalid presets from the preset selector using `Delete Preset`.
 
