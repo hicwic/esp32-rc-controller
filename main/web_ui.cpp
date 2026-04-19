@@ -12,49 +12,49 @@ String buildWebUiPage(const String& inputsJson) {
     :root{--surface:#fff;--line:#dbe4f1;--text:#0f172a;--muted:#64748b;--primary:#2563eb;--ok:#16a34a;--danger:#dc2626;--alt:#334155}
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(180deg,#f8fbff,#f1f5ff);font-family:Roboto,'Noto Sans',Arial,sans-serif;color:var(--text)}
-    .wrap{max-width:980px;margin:0 auto;padding:14px;display:grid;gap:10px}
+    .wrap{max-width:1080px;margin:0 auto;padding:14px;display:grid;gap:10px}
     .block{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:0 10px 24px rgba(37,99,235,.06)}
     h1{margin:0;font-size:22px}
     h2{margin:0;font-size:16px}
     .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .chip{background:#eef3ff;border:1px solid #d7e5ff;padding:6px 10px;border-radius:999px;font-size:12px}
     .btn{border:0;border-radius:12px;padding:9px 12px;color:#fff;font-weight:700;cursor:pointer;background:var(--primary)}
-    .btn.ok{background:var(--ok)} .btn.danger{background:var(--danger)} .btn.alt{background:var(--alt)}
-    .btn.ghost{background:#fff;color:#1e3a8a;border:1px solid #bfd8ff}
+    .btn.ok{background:var(--ok)} .btn.danger{background:var(--danger)} .btn.alt{background:var(--alt)} .btn.ghost{background:#fff;color:#1e3a8a;border:1px solid #bfd8ff}
     .btn:disabled{opacity:.45;cursor:not-allowed}
     select,input{height:40px;border:1px solid #cfd9eb;border-radius:12px;padding:0 10px;background:#fff}
+    input[type=checkbox]{height:auto}
     .grow{flex:1}
-    .cfg-toolbar{margin-bottom:16px}
-    .cfg-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .cfg-right{display:flex;gap:8px;align-items:center;margin-left:20px}
-    .channels{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:18px}
-    .ch{border:1px solid #dbe4f1;border-radius:14px;padding:10px;background:linear-gradient(180deg,#fff,#f9fbff)}
-    .ch-title{font-weight:700}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:12px}
+    .section-label{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;margin-top:10px}
+    .section-label.input{background:#e7f5ff;color:#0b4f8a;border:1px solid #b9e3ff}
+    .section-label.output{background:#fff4e5;color:#8a4b00;border:1px solid #ffd9a8}
+    .cards.input .card{border-color:#b9e3ff;background:linear-gradient(180deg,#ffffff,#f4fbff)}
+    .cards.output .card{border-color:#ffd9a8;background:linear-gradient(180deg,#ffffff,#fff9f1)}
+    .card{border:1px solid #dbe4f1;border-radius:14px;padding:10px;background:linear-gradient(180deg,#fff,#f9fbff)}
+    .title{font-weight:700}
     .meta{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-    .bar-bg{height:8px;border-radius:999px;background:#dbeafe;overflow:hidden;margin-top:8px;position:relative}
+    .bar{height:10px;border-radius:999px;background:#dbeafe;position:relative;overflow:hidden;margin-top:8px}
     .bar-mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#94a3b8}
-    .bar-signed{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,#22c55e,#16a34a)}
+    .bar-val{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,#22c55e,#16a34a)}
     .active{outline:2px solid #86efac;outline-offset:2px}
+    .modal{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;align-items:center;justify-content:center;padding:14px;z-index:40}
+    .modal.open{display:flex}
+    .sheet{max-width:780px;width:100%;background:#fff;border:1px solid #dbe4f1;border-radius:20px;padding:14px;display:grid;gap:10px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .lbl{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+    .inline{display:flex;gap:8px;align-items:center}
+    .inline .grow{flex:1}
+    .mini{padding:8px 10px;border-radius:10px;font-size:12px;white-space:nowrap}
     .hint{font-size:12px;color:var(--muted)}
     .toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:8px 12px;border-radius:10px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:90}
     .toast.show{opacity:1}
-    .modal{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;align-items:center;justify-content:center;padding:14px;z-index:50}
-    .modal.open{display:flex}
-    .sheet{max-width:700px;width:100%;background:#fff;border:1px solid #dbe4f1;border-radius:20px;padding:14px;display:grid;gap:10px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .field-inline{display:flex;gap:8px;align-items:center}
-    .field-inline select{flex:1}
-    .field-inline .grow{flex:1}
-    .btn.mini{padding:8px 10px;border-radius:10px;font-size:12px;white-space:nowrap}
-    .lbl{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
-    .mod-box{border:1px solid #dbe4f1;border-radius:12px;padding:10px;background:#f8fbff}
-    .mod-title{font-size:12px;color:var(--muted);margin:0 0 8px 0}
-    @media (max-width:640px){.grid{grid-template-columns:1fr}}
+    @media (max-width:760px){.grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="row"><h1>RC Controller</h1></div>
+    <div class="row"><h1 id="pageTitle">RC Controller</h1></div>
 
     <section class="block">
       <h2>Status</h2>
@@ -62,7 +62,7 @@ String buildWebUiPage(const String& inputsJson) {
       <div class="row" style="margin-top:8px">
         <button class="btn" id="pairOnBtn">Pair 120s</button>
         <button class="btn alt" id="pairOffBtn">Stop Pairing</button>
-        <button class="btn ghost" id="apConfigBtn">AP</button>
+        <button class="btn ghost" id="apConfigBtn">AP Settings</button>
       </div>
     </section>
 
@@ -76,517 +76,421 @@ String buildWebUiPage(const String& inputsJson) {
     </section>
 
     <section class="block">
-      <div class="row cfg-toolbar" style="justify-content:space-between;align-items:center">
-        <div class="cfg-left">
+      <div class="toolbar">
+        <div class="row">
           <h2>Preset Configuration</h2>
           <button class="btn ok" id="saveModelBtn" disabled>Save</button>
           <button class="btn ghost" id="revertModelBtn" disabled>Revert</button>
         </div>
-        <div class="cfg-right">
-          <button class="btn ghost" id="addChannelBtn">Add Channel</button>
+        <div class="row">
+          <button class="btn ghost" id="addVirtualBtn">Add Input</button>
+          <button class="btn ghost" id="addOutputBtn">Add Output</button>
         </div>
       </div>
-      <div id="channels" class="channels"></div>
+      <div class="section-label input">Input Section</div>
+      <div id="virtualCards" class="cards input"></div>
+      <div class="section-label output">Output Section</div>
+      <div id="outputCards" class="cards output"></div>
       <div class="row" style="margin-top:10px">
         <button class="btn danger" id="deletePresetBtn">Delete Preset</button>
       </div>
     </section>
   </div>
 
-  <div class="modal" id="channelModal">
+  <div class="modal" id="virtualModal">
     <div class="sheet">
-      <div class="row" style="justify-content:space-between">
-        <strong id="modalTitle">Add Channel</strong>
-        <button class="btn alt" id="modalCloseBtn" type="button">Close</button>
-      </div>
-      <input id="modalIndex" type="hidden">
+      <div class="row" style="justify-content:space-between"><strong id="virtualTitle">Add Input</strong><button class="btn alt" id="virtualCloseBtn" type="button">Close</button></div>
+      <input id="virtualIndex" type="hidden">
       <div class="grid">
-        <div><label class="lbl">Name</label><input id="modalName"></div>
-        <div>
-          <label class="lbl">GPIO / Type</label>
-          <div class="field-inline">
-            <select id="modalPin" class="grow"></select>
-            <select id="modalType" class="grow"><option value="0">PWM</option><option value="1">ON/OFF</option></select>
-          </div>
-        </div>
-        <div>
-          <label class="lbl">Primary input</label>
-          <div class="field-inline">
-            <select id="modalInput"></select>
-            <button class="btn alt mini" id="modalLearnPrimaryBtn" type="button">Learn</button>
-          </div>
-        </div>
-        <div>
-          <label class="lbl">Secondary input (optional)</label>
-          <div class="field-inline">
-            <select id="modalInputSecondary"></select>
-            <button class="btn alt mini" id="modalLearnSecondaryBtn" type="button">Learn</button>
-          </div>
-        </div>
-        <div class="mod-box">
-          <p class="mod-title">Modifier</p>
-          <label class="lbl">Modifier input (optional)</label>
-          <div class="field-inline" style="margin-bottom:8px">
-            <select id="modalInputModifier"></select>
-            <button class="btn alt mini" id="modalLearnModifierBtn" type="button">Learn</button>
-          </div>
-          <label class="lbl">Modifier function</label>
-          <select id="modalModifierFunction">
-            <option value="none">None</option>
-            <option value="reverse">Reverse</option>
-          </select>
-        </div>
-        <div><label class="lbl">Deadzone (%)</label><input id="modalThreshold" type="number" min="0" max="100"></div>
-        <div style="display:flex;align-items:flex-end"><label class="lbl" style="margin:0;display:flex;gap:8px;align-items:center"><input id="modalInverted" type="checkbox" style="height:auto;margin:0"> Reversed</label></div>
+        <div><label class="lbl">Name</label><input id="virtualName"></div>
+        <div><label class="lbl">Deadzone / Expo (%)</label><div class="inline"><input id="virtualDeadzone" type="number" min="0" max="95" class="grow"><input id="virtualExpo" type="number" min="0" max="100" class="grow"></div></div>
+        <div><label class="lbl">Primary input</label><div class="inline"><select id="virtualInput" class="grow"></select><button class="btn alt mini" id="learnPrimaryBtn" type="button">Learn</button></div></div>
+        <div><label class="lbl">Secondary input (optional)</label><div class="inline"><select id="virtualSecondary" class="grow"></select><button class="btn alt mini" id="learnSecondaryBtn" type="button">Learn</button></div></div>
+        <div><label class="lbl">Modifier input (optional)</label><div class="inline"><select id="virtualModifier" class="grow"></select><button class="btn alt mini" id="learnModifierBtn" type="button">Learn</button></div></div>
+        <div><label class="lbl">Modifier function</label><select id="virtualModifierFn"><option value="0">None</option><option value="1">Reverse</option></select></div>
       </div>
-      <div class="row">
-        <button class="btn ok" id="modalSaveBtn" type="button">Save</button>
-        <span class="hint" id="modalLearnStatus"></span>
+      <div class="row"><button class="btn ok" id="virtualSaveBtn" type="button">Save</button><span class="hint" id="virtualLearnStatus"></span></div>
+    </div>
+  </div>
+
+  <div class="modal" id="outputModal">
+    <div class="sheet">
+      <div class="row" style="justify-content:space-between"><strong id="outputTitle">Add Output</strong><button class="btn alt" id="outputCloseBtn" type="button">Close</button></div>
+      <input id="outputIndex" type="hidden">
+      <div class="grid">
+        <div><label class="lbl">Name</label><input id="outputName"></div>
+        <div><label class="lbl">GPIO / Type</label><div class="inline"><select id="outputPin" class="grow"></select><select id="outputType" class="grow"><option value="0">PWM</option><option value="1">ON/OFF</option></select></div></div>
+        <div><label class="lbl">Source A / Weight</label><div class="inline"><select id="sourceA" class="grow"></select><input id="weightA" type="number" min="-100" max="100" class="grow"></div></div>
+        <div><label class="lbl">Source B / Weight</label><div class="inline"><select id="sourceB" class="grow"></select><input id="weightB" type="number" min="-100" max="100" class="grow"></div></div>
+        <div><label class="lbl">Source C / Weight</label><div class="inline"><select id="sourceC" class="grow"></select><input id="weightC" type="number" min="-100" max="100" class="grow"></div></div>
+        <div id="thresholdRow"><label class="lbl">Activation threshold (%) - ON/OFF only</label><input id="outputThreshold" type="number" min="0" max="100"></div>
       </div>
+      <div class="row"><label class="hint"><input id="outputInverted" type="checkbox"> Reversed</label></div>
+      <div class="row"><button class="btn ok" id="outputSaveBtn" type="button">Save</button><span class="hint" id="outputError"></span></div>
     </div>
   </div>
 
   <div class="modal" id="modelCreateModal">
     <div class="sheet" style="max-width:560px">
-      <div class="row" style="justify-content:space-between">
-        <strong>Create Preset</strong>
-        <button class="btn alt" id="modelCreateCloseBtn" type="button">Close</button>
-      </div>
+      <div class="row" style="justify-content:space-between"><strong>Create Preset</strong><button class="btn alt" id="modelCreateCloseBtn" type="button">Close</button></div>
       <div class="grid">
         <div><label class="lbl">Name</label><input id="modelCreateName" placeholder="my_model"></div>
-        <div>
-          <label class="lbl">Clone from</label>
-          <select id="modelCreateClone">
-            <option value="">None</option>
-          </select>
-        </div>
+        <div><label class="lbl">Clone from</label><select id="modelCreateClone"><option value="">None</option></select></div>
       </div>
-      <div class="row">
-        <button class="btn ok" id="modelCreateSaveBtn" type="button">Create</button>
-      </div>
+      <div class="row"><button class="btn ok" id="modelCreateSaveBtn" type="button">Create</button></div>
     </div>
   </div>
 
   <div class="modal" id="apModal">
     <div class="sheet" style="max-width:560px">
-      <div class="row" style="justify-content:space-between">
-        <strong>AP Configuration</strong>
-        <button class="btn alt" id="apCloseBtn" type="button">Close</button>
-      </div>
+      <div class="row" style="justify-content:space-between"><strong>AP Configuration</strong><button class="btn alt" id="apCloseBtn" type="button">Close</button></div>
       <div>
-        <label class="lbl">AP SSID</label>
-        <input id="apSsidInput" maxlength="31">
-        <label class="lbl" style="margin-top:8px">AP Password</label>
-        <input id="apPasswordInput" maxlength="63" placeholder="empty => open network">
+        <label class="lbl">AP SSID</label><input id="apSsidInput" maxlength="31">
+        <label class="lbl" style="margin-top:8px">AP Password</label><input id="apPasswordInput" maxlength="63" placeholder="empty => open network">
         <div class="hint">Change takes effect after reboot.</div>
       </div>
-      <div class="row">
-        <button class="btn ok" id="apSaveBtn" type="button">Save</button>
-        <button class="btn alt" id="apApplyRebootBtn" type="button">Apply & Reboot Now</button>
-      </div>
+      <div class="row"><button class="btn ok" id="apSaveBtn" type="button">Save</button><button class="btn alt" id="apApplyRebootBtn" type="button">Apply & Reboot Now</button></div>
     </div>
   </div>
-  <div class="toast" id="toast"></div>
 
+  <div class="toast" id="toast"></div>
   <script>
   (function(){
     const INPUTS = __INPUTS_JSON__;
-    const state = {channels:[], presets:[], bootModel:"-", modelDirty:false, currentModel:"-", pwmPins:[], apSsid:"", apPassword:""};
+    const state = {virtual_inputs:[], outputs:[], presets:[], currentModel:"-", bootModel:"-", modelDirty:false, pwmPins:[], apSsid:"", apPassword:""};
     const createState = {forkReadonly:false};
     let suppressPresetChange = false;
+    let toastTimer = 0;
 
     const ui = {
-      statusChips: document.getElementById('statusChips'),
-      presetSelect: document.getElementById('presetSelect'),
-      newModelBtn: document.getElementById('newModelBtn'),
-      setDefaultBtn: document.getElementById('setDefaultBtn'),
-      pairOnBtn: document.getElementById('pairOnBtn'),
-      pairOffBtn: document.getElementById('pairOffBtn'),
-      apConfigBtn: document.getElementById('apConfigBtn'),
-      saveModelBtn: document.getElementById('saveModelBtn'),
-      revertModelBtn: document.getElementById('revertModelBtn'),
-      addChannelBtn: document.getElementById('addChannelBtn'),
-      deletePresetBtn: document.getElementById('deletePresetBtn'),
-      channels: document.getElementById('channels'),
-      toast: document.getElementById('toast'),
-      modal: document.getElementById('channelModal'),
-      modalTitle: document.getElementById('modalTitle'),
-      modalCloseBtn: document.getElementById('modalCloseBtn'),
-      modalIndex: document.getElementById('modalIndex'),
-      modalName: document.getElementById('modalName'),
-      modalPin: document.getElementById('modalPin'),
-      modalType: document.getElementById('modalType'),
-      modalInput: document.getElementById('modalInput'),
-      modalInputSecondary: document.getElementById('modalInputSecondary'),
-      modalInputModifier: document.getElementById('modalInputModifier'),
-      modalThreshold: document.getElementById('modalThreshold'),
-      modalInverted: document.getElementById('modalInverted'),
-      modalModifierFunction: document.getElementById('modalModifierFunction'),
-      modalSaveBtn: document.getElementById('modalSaveBtn'),
-      modalLearnPrimaryBtn: document.getElementById('modalLearnPrimaryBtn'),
-      modalLearnSecondaryBtn: document.getElementById('modalLearnSecondaryBtn'),
-      modalLearnModifierBtn: document.getElementById('modalLearnModifierBtn'),
-      modalLearnStatus: document.getElementById('modalLearnStatus'),
-      modelCreateModal: document.getElementById('modelCreateModal'),
-      modelCreateCloseBtn: document.getElementById('modelCreateCloseBtn'),
-      modelCreateName: document.getElementById('modelCreateName'),
-      modelCreateClone: document.getElementById('modelCreateClone'),
-      modelCreateSaveBtn: document.getElementById('modelCreateSaveBtn'),
-      apModal: document.getElementById('apModal'),
-      apCloseBtn: document.getElementById('apCloseBtn'),
-      apSsidInput: document.getElementById('apSsidInput'),
-      apPasswordInput: document.getElementById('apPasswordInput'),
-      apSaveBtn: document.getElementById('apSaveBtn'),
-      apApplyRebootBtn: document.getElementById('apApplyRebootBtn')
+      statusChips:document.getElementById('statusChips'),
+      pageTitle:document.getElementById('pageTitle'),
+      presetSelect:document.getElementById('presetSelect'),
+      newModelBtn:document.getElementById('newModelBtn'),
+      setDefaultBtn:document.getElementById('setDefaultBtn'),
+      pairOnBtn:document.getElementById('pairOnBtn'),
+      pairOffBtn:document.getElementById('pairOffBtn'),
+      apConfigBtn:document.getElementById('apConfigBtn'),
+      saveModelBtn:document.getElementById('saveModelBtn'),
+      revertModelBtn:document.getElementById('revertModelBtn'),
+      addVirtualBtn:document.getElementById('addVirtualBtn'),
+      addOutputBtn:document.getElementById('addOutputBtn'),
+      virtualCards:document.getElementById('virtualCards'),
+      outputCards:document.getElementById('outputCards'),
+      deletePresetBtn:document.getElementById('deletePresetBtn'),
+      toast:document.getElementById('toast'),
+      virtualModal:document.getElementById('virtualModal'),
+      virtualTitle:document.getElementById('virtualTitle'),
+      virtualCloseBtn:document.getElementById('virtualCloseBtn'),
+      virtualIndex:document.getElementById('virtualIndex'),
+      virtualName:document.getElementById('virtualName'),
+      virtualDeadzone:document.getElementById('virtualDeadzone'),
+      virtualExpo:document.getElementById('virtualExpo'),
+      virtualInput:document.getElementById('virtualInput'),
+      virtualSecondary:document.getElementById('virtualSecondary'),
+      virtualModifier:document.getElementById('virtualModifier'),
+      virtualModifierFn:document.getElementById('virtualModifierFn'),
+      learnPrimaryBtn:document.getElementById('learnPrimaryBtn'),
+      learnSecondaryBtn:document.getElementById('learnSecondaryBtn'),
+      learnModifierBtn:document.getElementById('learnModifierBtn'),
+      virtualLearnStatus:document.getElementById('virtualLearnStatus'),
+      virtualSaveBtn:document.getElementById('virtualSaveBtn'),
+      outputModal:document.getElementById('outputModal'),
+      outputTitle:document.getElementById('outputTitle'),
+      outputCloseBtn:document.getElementById('outputCloseBtn'),
+      outputIndex:document.getElementById('outputIndex'),
+      outputName:document.getElementById('outputName'),
+      outputPin:document.getElementById('outputPin'),
+      outputType:document.getElementById('outputType'),
+      sourceA:document.getElementById('sourceA'),
+      sourceB:document.getElementById('sourceB'),
+      sourceC:document.getElementById('sourceC'),
+      weightA:document.getElementById('weightA'),
+      weightB:document.getElementById('weightB'),
+      weightC:document.getElementById('weightC'),
+      outputThreshold:document.getElementById('outputThreshold'),
+      thresholdRow:document.getElementById('thresholdRow'),
+      outputInverted:document.getElementById('outputInverted'),
+      outputSaveBtn:document.getElementById('outputSaveBtn'),
+      outputError:document.getElementById('outputError'),
+      modelCreateModal:document.getElementById('modelCreateModal'),
+      modelCreateCloseBtn:document.getElementById('modelCreateCloseBtn'),
+      modelCreateName:document.getElementById('modelCreateName'),
+      modelCreateClone:document.getElementById('modelCreateClone'),
+      modelCreateSaveBtn:document.getElementById('modelCreateSaveBtn'),
+      apModal:document.getElementById('apModal'),
+      apCloseBtn:document.getElementById('apCloseBtn'),
+      apSsidInput:document.getElementById('apSsidInput'),
+      apPasswordInput:document.getElementById('apPasswordInput'),
+      apSaveBtn:document.getElementById('apSaveBtn'),
+      apApplyRebootBtn:document.getElementById('apApplyRebootBtn')
     };
 
-    let toastTimer = 0;
     function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});}
     function setMsg(t){
-      const txt = t || "Ready.";
-      ui.toast.textContent = txt;
+      ui.toast.textContent=t||"Ready.";
       ui.toast.classList.add("show");
-      if (toastTimer) clearTimeout(toastTimer);
-      toastTimer = setTimeout(function(){ ui.toast.classList.remove("show"); }, 1800);
+      if(toastTimer) clearTimeout(toastTimer);
+      toastTimer=setTimeout(function(){ui.toast.classList.remove("show");},1800);
     }
-
-    function fillInputOptions(el, selected, withNone){
-      const opts = [];
-      if (withNone) opts.push({id:0,label:"None"});
-      INPUTS.forEach(x=>opts.push(x));
-      el.innerHTML = opts.map(o=>"<option value='"+o.id+"' "+(Number(o.id)===Number(selected)?"selected":"")+">"+esc(o.label)+"</option>").join("");
-    }
-    function fillPinOptions(selectedPin, editingIndex){
-      const usedByOthers = new Set((state.channels||[])
-        .filter(function(ch){ return Number(ch.index)!==Number(editingIndex); })
-        .map(function(ch){ return Number(ch.pin); }));
-      const pins = (state.pwmPins||[]).slice().sort(function(a,b){ return Number(a)-Number(b); });
-      ui.modalPin.innerHTML = pins.map(function(pin){
-        const p = Number(pin);
-        const used = usedByOthers.has(p);
-        const label = "GPIO "+p+(used ? " (used)" : "");
-        const sel = p===Number(selectedPin) ? " selected" : "";
-        const dis = used ? " disabled" : "";
-        return "<option value='"+p+"'"+sel+dis+">"+label+"</option>";
-      }).join("");
-      if (!ui.modalPin.value && pins.length) {
-        const firstFree = pins.find(function(pin){ return !usedByOthers.has(Number(pin)); });
-        ui.modalPin.value = String(firstFree !== undefined ? firstFree : pins[0]);
-      }
-    }
-
-    fillInputOptions(ui.modalInput, 1, false);
-    fillInputOptions(ui.modalInputSecondary, 0, true);
-    fillInputOptions(ui.modalInputModifier, 0, true);
+    function delay(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
     async function post(url, data){
       const body = new URLSearchParams(data||{});
-      const r = await fetch(url, {method:"POST", body:body});
+      const r = await fetch(url,{method:"POST",body:body});
       const txt = await r.text();
-      try {
-        const parsed = JSON.parse(txt);
-        if (!r.ok && parsed && parsed.ok === undefined) parsed.ok = false;
-        return parsed;
-      } catch (_e) {
-        return {ok:r.ok, message: txt || ("HTTP " + r.status)};
+      try { const j = JSON.parse(txt); if (!r.ok && j && j.ok===undefined) j.ok=false; return j; }
+      catch(_e){ return {ok:r.ok, message:txt||("HTTP "+r.status)}; }
+    }
+
+    function fillInputSelect(el, selected, withNone){
+      const opts=[]; if(withNone) opts.push({id:0,label:"None"});
+      INPUTS.forEach(function(i){opts.push(i);});
+      el.innerHTML = opts.map(function(o){ return "<option value='"+o.id+"' "+(Number(o.id)===Number(selected)?"selected":"")+">"+esc(o.label)+"</option>"; }).join("");
+    }
+    function fillVirtualSourceSelect(el, selected){
+      const opts=[{id:-1,label:"None"}].concat((state.virtual_inputs||[]).map(function(v){ return {id:Number(v.index), label:"IN"+v.index+" - "+v.name}; }));
+      el.innerHTML = opts.map(function(o){ return "<option value='"+o.id+"' "+(Number(o.id)===Number(selected)?"selected":"")+">"+esc(o.label)+"</option>"; }).join("");
+    }
+    function fillPinOptions(selectedPin, editingIndex){
+      const usedByOthers = new Set((state.outputs||[]).filter(function(o){ return Number(o.index)!==Number(editingIndex);}).map(function(o){ return Number(o.pin); }));
+      const pins=(state.pwmPins||[]).slice().sort(function(a,b){return a-b;});
+      ui.outputPin.innerHTML=pins.map(function(pin){
+        const used=usedByOthers.has(Number(pin));
+        return "<option value='"+pin+"' "+(Number(pin)===Number(selectedPin)?"selected":"")+" "+(used?"disabled":"")+">GPIO "+pin+(used?" (used)":"")+"</option>";
+      }).join("");
+      if(!ui.outputPin.value && pins.length){
+        const free=pins.find(function(p){return !usedByOthers.has(Number(p));});
+        ui.outputPin.value=String(free!==undefined?free:pins[0]);
       }
     }
-
-    function inputLabel(inputId){
-      const found = INPUTS.find(i=>Number(i.id)===Number(inputId));
-      return found ? found.label : "None";
+    function inputLabel(id){
+      const it = INPUTS.find(function(i){ return Number(i.id)===Number(id); });
+      return it ? it.label : "None";
     }
-
+    function sourceLabel(idx){
+      if (Number(idx) < 0) return "None";
+      const v = (state.virtual_inputs||[]).find(function(x){ return Number(x.index)===Number(idx); });
+      return v ? ("IN"+v.index+" "+v.name) : ("IN"+idx);
+    }
     function signedBar(v){
-      const n = Number(v)||0;
-      const width = Math.round(Math.abs(n) * 50);
-      const left = n >= 0 ? 50 : (50 - width);
-      return "<div class='bar-bg'><div class='bar-mid'></div><div class='bar-signed' style='left:"+left+"%;width:"+width+"%'></div></div>";
+      const n=Number(v)||0; const width=Math.round(Math.abs(n)*50); const left=n>=0?50:(50-width);
+      return "<div class='bar'><div class='bar-mid'></div><div class='bar-val' style='left:"+left+"%;width:"+width+"%'></div></div>";
     }
+    function isReadonlyPreset(name){ return name==="car" || name==="excavator" || name==="skid_steer"; }
 
-    function renderChannels(){
-      ui.channels.innerHTML = state.channels.map(function(ch){
-        const second = Number(ch.input_secondary) > 0 ? (" / "+esc(inputLabel(ch.input_secondary))) : "";
-        let mod = "";
-        if (Number(ch.input_modifier) > 0) {
-          mod = " | mod "+esc(inputLabel(ch.input_modifier));
-          if (ch.modifier_reverses) mod += " (reverse)";
-        }
-        return "<div class='ch "+(ch.active?"active":"")+"' data-index='"+ch.index+"'>"
-          +"<div class='ch-title'>CH"+ch.index+" - "+esc(ch.name)+"</div>"
-          +"<div class='meta'><span>GPIO "+ch.pin+"</span><span>"+esc(ch.type_label)+"</span><span>"+esc(inputLabel(ch.input))+second+mod+"</span></div>"
-          +signedBar(ch.signed_activity)
-          +"<div class='row' style='margin-top:8px'><button class='btn ghost' data-action='edit'>Edit</button><button class='btn danger' data-action='delete'>Delete</button></div>"
+    function renderPresetSelect(){
+      const sig = state.presets.join("|")+"|boot:"+state.bootModel;
+      const focused = document.activeElement===ui.presetSelect;
+      if (!focused && ui.presetSelect.dataset.sig!==sig){
+        const current=state.currentModel;
+        ui.presetSelect.innerHTML=(state.presets||[]).map(function(p){ const label=p+(p===state.bootModel?" (default)":""); return "<option value='"+esc(p)+"'>"+esc(label)+"</option>"; }).join("");
+        ui.presetSelect.dataset.sig=sig;
+        if ((state.presets||[]).indexOf(current)>=0){ suppressPresetChange=true; ui.presetSelect.value=current; suppressPresetChange=false; }
+      }
+    }
+    function renderCloneSelect(){
+      const sig=(state.presets||[]).join("|");
+      if (document.activeElement===ui.modelCreateClone && ui.modelCreateModal.classList.contains("open")) return;
+      if (ui.modelCreateClone.dataset.sig===sig && ui.modelCreateClone.options.length) return;
+      const cur=ui.modelCreateClone.value;
+      ui.modelCreateClone.innerHTML="<option value=''>None</option>"+(state.presets||[]).map(function(p){return "<option value='"+esc(p)+"'>"+esc(p)+"</option>";}).join("");
+      ui.modelCreateClone.dataset.sig=sig;
+      if (cur && Array.from(ui.modelCreateClone.options).some(function(o){return o.value===cur;})) ui.modelCreateClone.value=cur;
+    }
+    function renderVirtualCards(){
+      ui.virtualCards.innerHTML=(state.virtual_inputs||[]).map(function(v){
+        const sec=Number(v.input_secondary)>0?(" / "+inputLabel(v.input_secondary)):"";
+        const mod=Number(v.input_modifier)>0?(" | mod "+inputLabel(v.input_modifier)+(Number(v.modifier_function)===1?" (reverse)":"")):"";
+        return "<div class='card "+(v.active?"active":"")+"' data-vidx='"+v.index+"'>"
+          +"<div class='title'>IN"+v.index+" - "+esc(v.name)+"</div>"
+          +"<div class='meta'><span>"+esc(inputLabel(v.input))+esc(sec)+esc(mod)+"</span><span>DZ "+v.deadzone+"%</span><span>Expo "+v.expo+"%</span></div>"
+          +signedBar(v.signed_activity)
+          +"<div class='row' style='margin-top:8px'><button class='btn ghost' data-vact='edit'>Edit</button><button class='btn danger' data-vact='delete'>Delete</button></div>"
+          +"</div>";
+      }).join("");
+    }
+    function updateOutputTypeUi(){
+      const isSwitch = Number(ui.outputType.value)===1;
+      ui.thresholdRow.style.display = isSwitch ? "" : "none";
+    }
+    function renderOutputCards(){
+      ui.outputCards.innerHTML=(state.outputs||[]).map(function(o){
+        const mix = sourceLabel(o.source_a)+"*"+o.weight_a+"% + "+sourceLabel(o.source_b)+"*"+o.weight_b+"% + "+sourceLabel(o.source_c)+"*"+o.weight_c+"%";
+        return "<div class='card "+(o.active?"active":"")+"' data-oidx='"+o.index+"'>"
+          +"<div class='title'>CH"+o.index+" - "+esc(o.name)+"</div>"
+          +"<div class='meta'><span>GPIO "+o.pin+"</span><span>"+esc(o.type_label)+"</span><span>"+esc(mix)+"</span></div>"
+          +signedBar(o.signed_activity)
+          +"<div class='row' style='margin-top:8px'><button class='btn ghost' data-oact='edit'>Edit</button><button class='btn danger' data-oact='delete'>Delete</button></div>"
           +"</div>";
       }).join("");
     }
 
-    function renderPresetSelect(){
-      const sig = state.presets.join("|")+"|boot:"+state.bootModel;
-      const focused = document.activeElement === ui.presetSelect;
-      if (!focused && ui.presetSelect.dataset.sig !== sig) {
-        const current = state.currentModel;
-        ui.presetSelect.innerHTML = state.presets.map(function(p){
-          const label = p + (p===state.bootModel ? " (default)" : "");
-          return "<option value='"+esc(p)+"'>"+esc(label)+"</option>";
-        }).join("");
-        ui.presetSelect.dataset.sig = sig;
-        if (state.presets.indexOf(current) >= 0) {
-          suppressPresetChange = true;
-          ui.presetSelect.value = current;
-          suppressPresetChange = false;
-        }
+    function openVirtualModal(mode, v){
+      ui.virtualTitle.textContent=mode==="add"?"Add Input":"Edit Input";
+      ui.virtualIndex.value=mode==="add"?"":String(v.index);
+      ui.virtualName.value=mode==="add"?"Input":v.name;
+      fillInputSelect(ui.virtualInput, mode==="add"?1:v.input, false);
+      fillInputSelect(ui.virtualSecondary, mode==="add"?0:v.input_secondary, true);
+      fillInputSelect(ui.virtualModifier, mode==="add"?0:v.input_modifier, true);
+      ui.virtualModifierFn.value=mode==="add"?"0":String(v.modifier_function||0);
+      ui.virtualDeadzone.value=mode==="add"?"10":String(v.deadzone);
+      ui.virtualExpo.value=mode==="add"?"0":String(v.expo);
+      ui.virtualLearnStatus.textContent="";
+      ui.virtualModal.classList.add("open");
+    }
+    function closeVirtualModal(){ ui.virtualModal.classList.remove("open"); ui.virtualLearnStatus.textContent=""; }
+    function openOutputModal(mode, o){
+      ui.outputTitle.textContent=mode==="add"?"Add Output":"Edit Output";
+      ui.outputIndex.value=mode==="add"?"":String(o.index);
+      ui.outputName.value=mode==="add"?"Output":o.name;
+      fillPinOptions(mode==="add"?13:o.pin, mode==="add"?-1:o.index);
+      ui.outputType.value=mode==="add"?"0":String(o.type);
+      fillVirtualSourceSelect(ui.sourceA, mode==="add"?-1:o.source_a);
+      fillVirtualSourceSelect(ui.sourceB, mode==="add"?-1:o.source_b);
+      fillVirtualSourceSelect(ui.sourceC, mode==="add"?-1:o.source_c);
+      ui.weightA.value=mode==="add"?"100":String(o.weight_a);
+      ui.weightB.value=mode==="add"?"0":String(o.weight_b);
+      ui.weightC.value=mode==="add"?"0":String(o.weight_c);
+      ui.outputThreshold.value=mode==="add"?"50":String(o.threshold);
+      ui.outputInverted.checked=mode==="add"?false:!!o.inverted;
+      ui.outputError.textContent="";
+      updateOutputTypeUi();
+      ui.outputModal.classList.add("open");
+    }
+    function closeOutputModal(){ ui.outputModal.classList.remove("open"); ui.outputError.textContent=""; }
+
+    async function learnInto(target){
+      ui.virtualLearnStatus.textContent="Listening...";
+      for(let i=0;i<20;i++){
+        const r=await post("/api/learn_detect");
+        if (r.ok){ target.value=String(r.input); ui.virtualLearnStatus.textContent="Detected: "+(r.label||r.input); return; }
+        if (r.message && r.message.indexOf("No gamepad")>=0){ ui.virtualLearnStatus.textContent=r.message; return; }
+        await delay(150);
       }
+      ui.virtualLearnStatus.textContent="No input detected";
     }
-    function isReadonlyPreset(name){
-      return name==="car" || name==="excavator";
-    }
-
-    function renderCloneOptions() {
-      const sig = state.presets.join("|");
-      const focused = document.activeElement === ui.modelCreateClone;
-      if (focused && ui.modelCreateModal.classList.contains("open")) return;
-      if (ui.modelCreateClone.dataset.sig === sig && ui.modelCreateClone.options.length) return;
-      const currentVal = ui.modelCreateClone.value;
-      ui.modelCreateClone.innerHTML = "<option value=''>None</option>" + state.presets.map(function(p){
-        return "<option value='"+esc(p)+"'>"+esc(p)+"</option>";
-      }).join("");
-      ui.modelCreateClone.dataset.sig = sig;
-      if (currentVal && Array.from(ui.modelCreateClone.options).some(function(o){ return o.value===currentVal; })) {
-        ui.modelCreateClone.value = currentVal;
-      }
-    }
-
-    function openModal(mode, ch){
-      ui.modalTitle.textContent = mode==="add" ? "Add Channel" : "Edit Channel";
-      ui.modalIndex.value = mode==="add" ? "" : String(ch.index);
-      ui.modalName.value = mode==="add" ? "CH" : ch.name;
-      fillPinOptions(mode==="add" ? 13 : Number(ch.pin), mode==="add" ? -1 : Number(ch.index));
-      ui.modalType.value = mode==="add" ? "0" : String(ch.type);
-      fillInputOptions(ui.modalInput, mode==="add" ? 1 : ch.input, false);
-      fillInputOptions(ui.modalInputSecondary, mode==="add" ? 0 : ch.input_secondary, true);
-      fillInputOptions(ui.modalInputModifier, mode==="add" ? 0 : ch.input_modifier, true);
-      ui.modalThreshold.value = mode==="add" ? "10" : String(ch.threshold);
-      ui.modalInverted.checked = mode==="add" ? false : !!ch.inverted;
-      ui.modalModifierFunction.value = (mode==="add" || !ch.modifier_reverses) ? "none" : "reverse";
-      ui.modalLearnStatus.textContent = "";
-      ui.modal.classList.add("open");
-    }
-
-    function closeModal(){ ui.modal.classList.remove("open"); ui.modalLearnStatus.textContent = ""; }
-    function delay(ms){ return new Promise(function(resolve){ setTimeout(resolve, ms); }); }
 
     async function refresh(){
       try{
-        const r = await fetch("/api/state");
-        const data = await r.json();
-        state.channels = data.channels || [];
-        state.presets = data.presets || [];
-        state.currentModel = data.current_model || "-";
-        state.bootModel = data.boot_model || "-";
-        state.modelDirty = !!data.model_dirty;
-        state.pwmPins = data.pwm_pins || [];
-        state.apSsid = data.ap_ssid || "";
-        state.apPassword = data.ap_password || "";
-        ui.statusChips.innerHTML = [
-          "Gamepad "+(data.gamepad?"ON":"OFF"),
-          "Scan "+(data.bt_scan?"ON":"OFF"),
-          "Pairing "+(data.pairing?"ON":"OFF")
-        ].map(x=>"<span class='chip'>"+x+"</span>").join("");
-        renderPresetSelect();
-        renderCloneOptions();
-        if (!ui.modal.classList.contains("open")) renderChannels();
-        ui.saveModelBtn.disabled = !state.modelDirty;
-        ui.revertModelBtn.disabled = !state.modelDirty;
-        ui.deletePresetBtn.disabled = isReadonlyPreset(state.currentModel);
-      } catch(_e){
-        setMsg("Refresh failed.");
-      }
+        const r=await fetch("/api/state");
+        const data=await r.json();
+        state.virtual_inputs=data.virtual_inputs||[];
+        state.outputs=data.outputs||[];
+        state.presets=data.presets||[];
+        state.currentModel=data.current_model||"-";
+        state.bootModel=data.boot_model||"-";
+        state.modelDirty=!!data.model_dirty;
+        state.pwmPins=data.pwm_pins||[];
+        state.apSsid=data.ap_ssid||"";
+        state.apPassword=data.ap_password||"";
+        document.title = state.apSsid || "RC Controller";
+        ui.pageTitle.textContent = state.apSsid || "RC Controller";
+        ui.statusChips.innerHTML=["Gamepad "+(data.gamepad?"ON":"OFF"),"Scan "+(data.bt_scan?"ON":"OFF"),"Pairing "+(data.pairing?"ON":"OFF")].map(function(x){return "<span class='chip'>"+x+"</span>";}).join("");
+        renderPresetSelect(); renderCloneSelect(); renderVirtualCards(); renderOutputCards();
+        ui.saveModelBtn.disabled=!state.modelDirty;
+        ui.revertModelBtn.disabled=!state.modelDirty;
+        ui.deletePresetBtn.disabled=isReadonlyPreset(state.currentModel);
+      }catch(_e){ setMsg("Refresh failed"); }
     }
+
+    function openCreateModelModal(opts){
+      const o=opts||{}; createState.forkReadonly=!!o.forkReadonly;
+      ui.modelCreateName.value=o.name||""; ui.modelCreateClone.value=o.base||"";
+      ui.modelCreateClone.disabled=!!o.lockBase;
+      ui.modelCreateModal.classList.add("open"); ui.modelCreateName.focus();
+    }
+    function closeCreateModelModal(){ ui.modelCreateModal.classList.remove("open"); createState.forkReadonly=false; ui.modelCreateClone.disabled=false; }
+    function openApModal(){ ui.apSsidInput.value=state.apSsid||""; ui.apPasswordInput.value=state.apPassword||""; ui.apModal.classList.add("open"); ui.apSsidInput.focus(); }
+    function closeApModal(){ ui.apModal.classList.remove("open"); }
 
     ui.presetSelect.addEventListener("change", async function(){
       if (suppressPresetChange) return;
-      const selected = ui.presetSelect.value;
-      if (!selected || selected === state.currentModel) return;
-      if (state.modelDirty) {
-        const ok = confirm("You have unsaved changes. Loading another preset will discard them. Continue?");
-        if (!ok) {
-          suppressPresetChange = true;
-          ui.presetSelect.value = state.currentModel;
-          suppressPresetChange = false;
-          return;
-        }
+      const selected=ui.presetSelect.value;
+      if (!selected || selected===state.currentModel) return;
+      if (state.modelDirty){
+        const ok=confirm("You have unsaved changes. Loading another preset will discard them. Continue?");
+        if (!ok){ suppressPresetChange=true; ui.presetSelect.value=state.currentModel; suppressPresetChange=false; return; }
       }
-      const r = await post("/api/preset_apply", {name:selected});
-      setMsg(r.message || "Preset loaded");
-      refresh();
+      const r=await post("/api/preset_apply",{name:selected}); setMsg(r.message||"Preset loaded"); refresh();
     });
-
-    function openCreateModelModal(opts){
-      const o = opts || {};
-      createState.forkReadonly = !!o.forkReadonly;
-      ui.modelCreateName.value = o.name || "";
-      ui.modelCreateClone.value = o.base || "";
-      ui.modelCreateClone.disabled = !!o.lockBase;
-      ui.modelCreateModal.classList.add("open");
-      ui.modelCreateName.focus();
-    }
-    function closeCreateModelModal(){
-      ui.modelCreateModal.classList.remove("open");
-      createState.forkReadonly = false;
-      ui.modelCreateClone.disabled = false;
-    }
-    function openApModal(){
-      ui.apSsidInput.value = state.apSsid || "";
-      ui.apPasswordInput.value = state.apPassword || "";
-      ui.apModal.classList.add("open");
-      ui.apSsidInput.focus();
-    }
-    function closeApModal(){ ui.apModal.classList.remove("open"); }
-
-    ui.newModelBtn.addEventListener("click", function(){ openCreateModelModal(); });
+    ui.newModelBtn.addEventListener("click", function(){openCreateModelModal();});
     ui.modelCreateCloseBtn.addEventListener("click", closeCreateModelModal);
-    ui.modelCreateModal.addEventListener("click", function(ev){ if (ev.target===ui.modelCreateModal) closeCreateModelModal(); });
+    ui.modelCreateModal.addEventListener("click", function(ev){ if(ev.target===ui.modelCreateModal) closeCreateModelModal(); });
     ui.modelCreateSaveBtn.addEventListener("click", async function(){
-      const name = (ui.modelCreateName.value || "").trim();
-      if (!name) { setMsg("Model name is required"); return; }
-      const base = ui.modelCreateClone.value || "";
-      const payload = {name:name, base:base};
-      if (createState.forkReadonly) payload.from_current = "1";
-      const r = await post("/api/model_create", payload);
-      setMsg(r.message || "Model created");
-      if (r.ok) closeCreateModelModal();
-      refresh();
+      const name=(ui.modelCreateName.value||"").trim(); if(!name){ setMsg("Model name is required"); return; }
+      const payload={name:name, base:ui.modelCreateClone.value||""}; if(createState.forkReadonly) payload.from_current="1";
+      const r=await post("/api/model_create",payload); setMsg(r.message||"Model created"); if(r.ok) closeCreateModelModal(); refresh();
     });
-    ui.setDefaultBtn.addEventListener("click", async function(){
-      const r = await post("/api/model_set_default", {name:ui.presetSelect.value});
-      setMsg(r.message || "Default updated");
-      refresh();
-    });
+    ui.setDefaultBtn.addEventListener("click", async function(){ const r=await post("/api/model_set_default",{name:ui.presetSelect.value}); setMsg(r.message||"Default updated"); refresh(); });
     ui.saveModelBtn.addEventListener("click", async function(){
-      const r = await post("/api/model_save_current");
-      if (r && r.readonly) {
-        setMsg("Readonly preset detected: create a fork to keep your changes.");
-        openCreateModelModal({
-          forkReadonly: true,
-          lockBase: true,
-          base: r.base || state.currentModel || "",
-          name: r.suggested_name || "custom_model"
-        });
-        return;
-      }
-      setMsg(r.message || "Saved");
-      refresh();
+      const r=await post("/api/model_save_current");
+      if (r && r.readonly){ setMsg("Readonly preset detected: create a fork to keep your changes."); openCreateModelModal({forkReadonly:true,lockBase:true,base:r.base||state.currentModel||"",name:r.suggested_name||"custom_model"}); return; }
+      setMsg(r.message||"Saved"); refresh();
     });
-    ui.revertModelBtn.addEventListener("click", async function(){
-      const r = await post("/api/model_revert");
-      setMsg(r.message || "Reverted");
-      refresh();
-    });
+    ui.revertModelBtn.addEventListener("click", async function(){ const r=await post("/api/model_revert"); setMsg(r.message||"Reverted"); refresh(); });
+    ui.deletePresetBtn.addEventListener("click", async function(){ const n=state.currentModel; if(!n||isReadonlyPreset(n)) return; if(!confirm("Delete preset '"+n+"'?")) return; const r=await post("/api/model_delete",{name:n}); setMsg(r.message||"Deleted"); refresh(); });
 
-    ui.pairOnBtn.addEventListener("click", async function(){ const r = await post("/api/pairing_on"); setMsg(r.message||"Pairing on"); refresh(); });
-    ui.pairOffBtn.addEventListener("click", async function(){ const r = await post("/api/pairing_off"); setMsg(r.message||"Pairing off"); refresh(); });
-    ui.deletePresetBtn.addEventListener("click", async function(){
-      const name = state.currentModel;
-      if (!name || isReadonlyPreset(name)) return;
-      const ok = confirm("Delete preset '"+name+"'?");
-      if (!ok) return;
-      const r = await post("/api/model_delete", {name:name});
-      setMsg(r.message || "Preset deleted");
-      refresh();
-    });
-
+    ui.pairOnBtn.addEventListener("click", async function(){ const r=await post("/api/pairing_on"); setMsg(r.message||"Pairing on"); refresh(); });
+    ui.pairOffBtn.addEventListener("click", async function(){ const r=await post("/api/pairing_off"); setMsg(r.message||"Pairing off"); refresh(); });
     ui.apConfigBtn.addEventListener("click", openApModal);
     ui.apCloseBtn.addEventListener("click", closeApModal);
-    ui.apModal.addEventListener("click", function(ev){ if (ev.target===ui.apModal) closeApModal(); });
-    ui.apSaveBtn.addEventListener("click", async function(){
-      const ssid = (ui.apSsidInput.value || "").trim();
-      const password = ui.apPasswordInput.value || "";
-      const r = await post("/api/ap_config_set", {ssid:ssid, password:password});
-      setMsg(r.message || "AP settings saved");
-      if (r.ok) closeApModal();
-      refresh();
-    });
-    ui.apApplyRebootBtn.addEventListener("click", async function(){
-      const ssid = (ui.apSsidInput.value || "").trim();
-      const password = ui.apPasswordInput.value || "";
-      const r = await post("/api/ap_config_apply_reboot", {ssid:ssid, password:password});
-      setMsg(r.message || "Applying...");
-    });
-    ui.addChannelBtn.addEventListener("click", function(){ openModal("add"); });
+    ui.apModal.addEventListener("click", function(ev){ if(ev.target===ui.apModal) closeApModal(); });
+    ui.apSaveBtn.addEventListener("click", async function(){ const r=await post("/api/ap_config_set",{ssid:(ui.apSsidInput.value||"").trim(),password:ui.apPasswordInput.value||""}); setMsg(r.message||"Saved"); if(r.ok) closeApModal(); refresh(); });
+    ui.apApplyRebootBtn.addEventListener("click", async function(){ const r=await post("/api/ap_config_apply_reboot",{ssid:(ui.apSsidInput.value||"").trim(),password:ui.apPasswordInput.value||""}); setMsg(r.message||"Applying"); });
 
-    ui.channels.addEventListener("click", async function(ev){
-      const btn = ev.target.closest("button");
-      if (!btn) return;
-      const card = ev.target.closest(".ch");
-      if (!card) return;
-      const idx = Number(card.dataset.index);
-      const ch = state.channels.find(c=>Number(c.index)===idx);
-      if (!ch) return;
-      const action = btn.dataset.action;
-      if (action==="edit") { openModal("edit", ch); return; }
-      if (action==="delete") { const r = await post("/api/channel_delete", {index:idx}); setMsg(r.message||"Deleted"); refresh(); }
+    ui.addVirtualBtn.addEventListener("click", function(){ openVirtualModal("add"); });
+    ui.addOutputBtn.addEventListener("click", function(){ openOutputModal("add"); });
+
+    ui.virtualCards.addEventListener("click", async function(ev){
+      const btn=ev.target.closest("button"); if(!btn) return;
+      const card=ev.target.closest(".card"); if(!card) return;
+      const idx=Number(card.dataset.vidx);
+      const v=(state.virtual_inputs||[]).find(function(x){return Number(x.index)===idx;}); if(!v) return;
+      const act=btn.dataset.vact;
+      if (act==="edit"){ openVirtualModal("edit", v); return; }
+      if (act==="delete"){ const r=await post("/api/virtual_delete",{index:idx}); setMsg(r.message||"Deleted"); refresh(); }
+    });
+    ui.outputCards.addEventListener("click", async function(ev){
+      const btn=ev.target.closest("button"); if(!btn) return;
+      const card=ev.target.closest(".card"); if(!card) return;
+      const idx=Number(card.dataset.oidx);
+      const o=(state.outputs||[]).find(function(x){return Number(x.index)===idx;}); if(!o) return;
+      const act=btn.dataset.oact;
+      if (act==="edit"){ openOutputModal("edit", o); return; }
+      if (act==="delete"){ const r=await post("/api/output_delete",{index:idx}); setMsg(r.message||"Deleted"); refresh(); }
     });
 
-    ui.modalCloseBtn.addEventListener("click", closeModal);
-    ui.modal.addEventListener("click", function(ev){ if (ev.target===ui.modal) closeModal(); });
+    ui.virtualCloseBtn.addEventListener("click", closeVirtualModal);
+    ui.virtualModal.addEventListener("click", function(ev){ if(ev.target===ui.virtualModal) closeVirtualModal(); });
+    ui.learnPrimaryBtn.addEventListener("click", function(){ learnInto(ui.virtualInput); });
+    ui.learnSecondaryBtn.addEventListener("click", function(){ learnInto(ui.virtualSecondary); });
+    ui.learnModifierBtn.addEventListener("click", function(){ learnInto(ui.virtualModifier); });
+    ui.virtualSaveBtn.addEventListener("click", async function(){
+      const isAdd=!ui.virtualIndex.value;
+      const payload={name:ui.virtualName.value,input:ui.virtualInput.value,input_secondary:ui.virtualSecondary.value,input_modifier:ui.virtualModifier.value,modifier_function:ui.virtualModifierFn.value,deadzone:ui.virtualDeadzone.value,expo:ui.virtualExpo.value};
+      if(!isAdd) payload.index=ui.virtualIndex.value;
+      const r=await post(isAdd?"/api/virtual_add":"/api/virtual_update",payload);
+      setMsg(r.message||(r.ok?"Saved":"Error")); if(r.ok) closeVirtualModal(); refresh();
+    });
 
-    async function learnInto(target){
-      ui.modalLearnStatus.textContent = "Listening...";
-      for (let attempt = 0; attempt < 20; attempt++) {
-        try {
-          const r = await post("/api/learn_detect");
-          if (r.ok) {
-            target.value = String(r.input);
-            const txt = "Detected: " + (r.label || r.input);
-            ui.modalLearnStatus.textContent = txt;
-            setMsg(txt);
-            return;
-          }
-          if (r.message && r.message.indexOf("No gamepad") >= 0) {
-            ui.modalLearnStatus.textContent = r.message;
-            setMsg(r.message);
-            return;
-          }
-        } catch (_e) {
-          ui.modalLearnStatus.textContent = "Learn request failed";
-          setMsg("Learn request failed");
-          return;
-        }
-        await delay(150);
-      }
-      ui.modalLearnStatus.textContent = "No input detected";
-      setMsg("No input detected");
-    }
-    ui.modalLearnPrimaryBtn.addEventListener("click", function(){ learnInto(ui.modalInput); });
-    ui.modalLearnSecondaryBtn.addEventListener("click", function(){ learnInto(ui.modalInputSecondary); });
-    ui.modalLearnModifierBtn.addEventListener("click", function(){ learnInto(ui.modalInputModifier); });
-
-    ui.modalSaveBtn.addEventListener("click", async function(){
-      const isAdd = !ui.modalIndex.value;
-      ui.modalLearnStatus.textContent = "";
-      const payload = {
-        name: ui.modalName.value,
-        pin: ui.modalPin.value,
-        type: ui.modalType.value,
-        input: ui.modalInput.value,
-        input_secondary: ui.modalInputSecondary.value,
-        input_modifier: ui.modalInputModifier.value,
-        modifier_reverses: ui.modalModifierFunction.value === "reverse" ? "1":"0",
-        threshold: ui.modalThreshold.value,
-        inverted: ui.modalInverted.checked ? "1":"0"
-      };
-      if (!isAdd) payload.index = ui.modalIndex.value;
-      const r = await post(isAdd?"/api/channel_add":"/api/channel_update", payload);
-      setMsg(r.message || (r.ok ? "Saved":"Error"));
-      if (r.ok) {
-        closeModal();
-      } else {
-        ui.modalLearnStatus.textContent = r.message || "Save failed";
-      }
+    ui.outputCloseBtn.addEventListener("click", closeOutputModal);
+    ui.outputModal.addEventListener("click", function(ev){ if(ev.target===ui.outputModal) closeOutputModal(); });
+    ui.outputType.addEventListener("change", updateOutputTypeUi);
+    ui.outputSaveBtn.addEventListener("click", async function(){
+      const isAdd=!ui.outputIndex.value;
+      const payload={name:ui.outputName.value,pin:ui.outputPin.value,type:ui.outputType.value,source_a:ui.sourceA.value,source_b:ui.sourceB.value,source_c:ui.sourceC.value,weight_a:ui.weightA.value,weight_b:ui.weightB.value,weight_c:ui.weightC.value,threshold:ui.outputThreshold.value,inverted:ui.outputInverted.checked?"1":"0"};
+      if(!isAdd) payload.index=ui.outputIndex.value;
+      const r=await post(isAdd?"/api/output_add":"/api/output_update",payload);
+      setMsg(r.message||(r.ok?"Saved":"Error"));
+      if(r.ok){ closeOutputModal(); } else { ui.outputError.textContent=r.message||"Save failed"; }
       refresh();
     });
 
+    fillInputSelect(ui.virtualInput, 1, false);
+    fillInputSelect(ui.virtualSecondary, 0, true);
+    fillInputSelect(ui.virtualModifier, 0, true);
+    updateOutputTypeUi();
     refresh();
     setInterval(refresh, 500);
   })();
@@ -594,7 +498,6 @@ String buildWebUiPage(const String& inputsJson) {
 </body>
 </html>
 )HTML";
-
     page.replace("__INPUTS_JSON__", inputsJson);
     return page;
 }

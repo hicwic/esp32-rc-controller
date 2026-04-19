@@ -251,11 +251,28 @@ void buildBuiltinPresetRcCar(PersistedConfig* cfg) {
     *cfg = {};
     cfg->magic = kConfigMagic;
     cfg->version = kConfigVersion;
+    cfg->virtual_inputs[0].used = 1;
+    cfg->virtual_inputs[0].input = static_cast<uint8_t>(InputId::AxisX);
+    cfg->virtual_inputs[0].deadzone = 10;
+    cfg->virtual_inputs[0].expo = 20;
+    strncpy(cfg->virtual_inputs[0].name, "Steering", sizeof(cfg->virtual_inputs[0].name) - 1);
+
+    cfg->virtual_inputs[1].used = 1;
+    cfg->virtual_inputs[1].input = static_cast<uint8_t>(InputId::Throttle);
+    cfg->virtual_inputs[1].input_secondary = static_cast<uint8_t>(InputId::Brake);
+    cfg->virtual_inputs[1].deadzone = 5;
+    cfg->virtual_inputs[1].expo = 25;
+    strncpy(cfg->virtual_inputs[1].name, "Throttle", sizeof(cfg->virtual_inputs[1].name) - 1);
+
     cfg->channels[0].used = 1;
     cfg->channels[0].type = static_cast<uint8_t>(ChannelType::Pwm);
     cfg->channels[0].pin = 13;
-    cfg->channels[0].inverted = 0;
-    cfg->channels[0].input = static_cast<uint8_t>(InputId::AxisX);
+    cfg->channels[0].source_a = 0;
+    cfg->channels[0].source_b = -1;
+    cfg->channels[0].source_c = -1;
+    cfg->channels[0].weight_a = 100;
+    cfg->channels[0].weight_b = 0;
+    cfg->channels[0].weight_c = 0;
     cfg->channels[0].threshold = 50;
     strncpy(cfg->channels[0].name, "Steering", sizeof(cfg->channels[0].name) - 1);
 
@@ -263,8 +280,12 @@ void buildBuiltinPresetRcCar(PersistedConfig* cfg) {
     cfg->channels[1].type = static_cast<uint8_t>(ChannelType::Pwm);
     cfg->channels[1].pin = 12;
     cfg->channels[1].inverted = 1;
-    cfg->channels[1].input = static_cast<uint8_t>(InputId::Throttle);
-    cfg->channels[1].input_secondary = static_cast<uint8_t>(InputId::Brake);
+    cfg->channels[1].source_a = 1;
+    cfg->channels[1].source_b = -1;
+    cfg->channels[1].source_c = -1;
+    cfg->channels[1].weight_a = 100;
+    cfg->channels[1].weight_b = 0;
+    cfg->channels[1].weight_c = 0;
     cfg->channels[1].threshold = 50;
     strncpy(cfg->channels[1].name, "Throttle", sizeof(cfg->channels[1].name) - 1);
 }
@@ -276,33 +297,110 @@ void buildBuiltinPresetExcavator(PersistedConfig* cfg) {
     *cfg = {};
     cfg->magic = kConfigMagic;
     cfg->version = kConfigVersion;
+    const struct {
+        const char* name;
+        InputId input;
+        InputId secondary;
+        uint8_t deadzone;
+        uint8_t expo;
+    } vmap[] = {{"Drive", InputId::AxisY, InputId::None, 10, 30},
+                {"Steer", InputId::AxisX, InputId::None, 10, 20},
+                {"Turret", InputId::AxisRX, InputId::None, 10, 15},
+                {"Boom", InputId::AxisRY, InputId::None, 10, 20},
+                {"Bucket", InputId::Throttle, InputId::Brake, 5, 25}};
+    for (size_t i = 0; i < sizeof(vmap) / sizeof(vmap[0]); ++i) {
+        cfg->virtual_inputs[i].used = 1;
+        cfg->virtual_inputs[i].input = static_cast<uint8_t>(vmap[i].input);
+        cfg->virtual_inputs[i].input_secondary = static_cast<uint8_t>(vmap[i].secondary);
+        cfg->virtual_inputs[i].deadzone = vmap[i].deadzone;
+        cfg->virtual_inputs[i].expo = vmap[i].expo;
+        strncpy(cfg->virtual_inputs[i].name, vmap[i].name, sizeof(cfg->virtual_inputs[i].name) - 1);
+    }
 
     const struct {
         const char* name;
         uint8_t pin;
-        InputId input;
-        InputId secondary;
-        InputId modifier;
-        bool modifierReverses;
         bool inverted;
-    } map[] = {{"Turret", 4, InputId::AxisRX, InputId::None, InputId::None, false, false},
-               {"Left Track", 5, InputId::Brake, InputId::None, InputId::ButtonL1, true, false},
-               {"Right Track", 6, InputId::Throttle, InputId::None, InputId::ButtonR1, true, false},
-               {"Boom", 7, InputId::AxisX, InputId::None, InputId::None, false, false},
-               {"Stick", 15, InputId::AxisY, InputId::None, InputId::None, false, false},
-               {"Bucket", 16, InputId::AxisRY, InputId::None, InputId::None, false, true}};
+        int8_t sourceA;
+        int8_t weightA;
+        int8_t sourceB;
+        int8_t weightB;
+    } omap[] = {{"Left Track", 5, false, 0, 100, 1, 100},
+                {"Right Track", 6, false, 0, 100, 1, -100},
+                {"Turret", 4, false, 2, 100, -1, 0},
+                {"Boom", 7, false, 3, 100, -1, 0},
+                {"Bucket", 16, true, 4, 100, -1, 0}};
 
-    for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); ++i) {
+    for (size_t i = 0; i < sizeof(omap) / sizeof(omap[0]); ++i) {
         cfg->channels[i].used = 1;
         cfg->channels[i].type = static_cast<uint8_t>(ChannelType::Pwm);
-        cfg->channels[i].pin = map[i].pin;
-        cfg->channels[i].inverted = map[i].inverted ? 1 : 0;
-        cfg->channels[i].input = static_cast<uint8_t>(map[i].input);
-        cfg->channels[i].input_secondary = static_cast<uint8_t>(map[i].secondary);
-        cfg->channels[i].input_modifier = static_cast<uint8_t>(map[i].modifier);
-        cfg->channels[i].modifier_reverses = map[i].modifierReverses ? 1 : 0;
+        cfg->channels[i].pin = omap[i].pin;
+        cfg->channels[i].inverted = omap[i].inverted ? 1 : 0;
+        cfg->channels[i].source_a = omap[i].sourceA;
+        cfg->channels[i].weight_a = omap[i].weightA;
+        cfg->channels[i].source_b = omap[i].sourceB;
+        cfg->channels[i].weight_b = omap[i].weightB;
+        cfg->channels[i].source_c = -1;
+        cfg->channels[i].weight_c = 0;
         cfg->channels[i].threshold = 50;
-        strncpy(cfg->channels[i].name, map[i].name, sizeof(cfg->channels[i].name) - 1);
+        strncpy(cfg->channels[i].name, omap[i].name, sizeof(cfg->channels[i].name) - 1);
+    }
+}
+
+void buildBuiltinPresetSkidSteer(PersistedConfig* cfg) {
+    if (!cfg) {
+        return;
+    }
+    *cfg = {};
+    cfg->magic = kConfigMagic;
+    cfg->version = kConfigVersion;
+
+    const struct {
+        const char* name;
+        InputId input;
+        InputId secondary;
+        uint8_t deadzone;
+        uint8_t expo;
+    } vmap[] = {{"Drive", InputId::AxisY, InputId::None, 10, 25},
+                {"Steer", InputId::AxisX, InputId::None, 10, 20},
+                {"Arm", InputId::AxisRY, InputId::None, 10, 20},
+                {"Bucket", InputId::AxisRX, InputId::None, 10, 20}};
+
+    for (size_t i = 0; i < sizeof(vmap) / sizeof(vmap[0]); ++i) {
+        cfg->virtual_inputs[i].used = 1;
+        cfg->virtual_inputs[i].input = static_cast<uint8_t>(vmap[i].input);
+        cfg->virtual_inputs[i].input_secondary = static_cast<uint8_t>(vmap[i].secondary);
+        cfg->virtual_inputs[i].deadzone = vmap[i].deadzone;
+        cfg->virtual_inputs[i].expo = vmap[i].expo;
+        strncpy(cfg->virtual_inputs[i].name, vmap[i].name, sizeof(cfg->virtual_inputs[i].name) - 1);
+    }
+
+    const struct {
+        const char* name;
+        uint8_t pin;
+        bool inverted;
+        int8_t sourceA;
+        int8_t weightA;
+        int8_t sourceB;
+        int8_t weightB;
+    } omap[] = {{"Left Track", 5, false, 0, 100, 1, 100},
+                {"Right Track", 6, false, 0, 100, 1, -100},
+                {"Arm", 7, false, 2, 100, -1, 0},
+                {"Bucket", 16, false, 3, 100, -1, 0}};
+
+    for (size_t i = 0; i < sizeof(omap) / sizeof(omap[0]); ++i) {
+        cfg->channels[i].used = 1;
+        cfg->channels[i].type = static_cast<uint8_t>(ChannelType::Pwm);
+        cfg->channels[i].pin = omap[i].pin;
+        cfg->channels[i].inverted = omap[i].inverted ? 1 : 0;
+        cfg->channels[i].source_a = omap[i].sourceA;
+        cfg->channels[i].weight_a = omap[i].weightA;
+        cfg->channels[i].source_b = omap[i].sourceB;
+        cfg->channels[i].weight_b = omap[i].weightB;
+        cfg->channels[i].source_c = -1;
+        cfg->channels[i].weight_c = 0;
+        cfg->channels[i].threshold = 50;
+        strncpy(cfg->channels[i].name, omap[i].name, sizeof(cfg->channels[i].name) - 1);
     }
 }
 
@@ -317,6 +415,10 @@ bool loadAnyPreset(const String& name, PersistedConfig* out, String* errorOut) {
     }
     if (name == kPresetExcavator) {
         buildBuiltinPresetExcavator(out);
+        return true;
+    }
+    if (name == kPresetSkidSteer) {
+        buildBuiltinPresetSkidSteer(out);
         return true;
     }
     return loadUserPreset(name, out, errorOut);
