@@ -15,24 +15,42 @@ Planned/expected compatibility: **ESP32-WROOM-32** (including DualShock 4 over B
 
 - Wi-Fi AP + captive portal web interface
 - Bluetooth gamepad pairing/scan controls
-- Channel mapping UI (PWM / ON-OFF)
-- Primary / Secondary / Modifier input model
-- Live input activity indicators
+- Input editor:
+  - Direct / 2-position / 3-position input types
+  - Unipolar / Bipolar toggle range
+  - Optional modifier function (Reverse / Center)
+  - Optional gamepad rumble feedback
+- Output editor:
+  - PWM / ON-OFF outputs
+  - 3-source mix (`A/B/C`) with multiplier + offset
+  - Mix mode: `Add` or `Multiply`
 - Presets (models):
-  - Built-in readonly presets: `car`, `excavator`
+  - Built-in readonly presets: `car`, `excavator`, `skid_steer`
   - Custom presets: create, edit, save, revert, delete
   - Boot default preset selection
-  - Readonly fork flow (save on readonly opens fork/create flow)
 - AP configuration from UI:
   - AP SSID
   - AP password
   - Save for next boot, or **Apply & Reboot Now**
 
-## Repository structure
+## Documentation
 
+- User guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+
+## UI Screenshots
+
+<a href="docs/images/ui-overview.png"><img src="docs/images/ui-overview.png" alt="UI overview" width="170"></a>
+<a href="docs/images/ui-edit-input.png"><img src="docs/images/ui-edit-input.png" alt="Edit Input" width="170"></a>
+<a href="docs/images/ui-edit-output.png"><img src="docs/images/ui-edit-output.png" alt="Edit Output" width="170"></a>
+<a href="docs/images/ui-ap-settings.png"><img src="docs/images/ui-ap-settings.png" alt="AP Settings" width="170"></a>
+
+For step-by-step screenshots in context, see the [User Guide](docs/USER_GUIDE.md).
+
+Repository structure (quick):
 - `main/sketch.cpp`: runtime orchestration, web handlers, hardware glue
 - `main/web_ui.cpp`: embedded frontend page (HTML/CSS/JS)
 - `main/control_inputs.*`: gamepad input definitions + normalization + learn detection
+- `main/rc_model.*`: input/output runtime model and signal processing
 - `main/preset_store.*`: preset/NVS persistence helpers
 - `components/`: third-party components (e.g. ESP32Servo)
 - `patches/`: local component patches
