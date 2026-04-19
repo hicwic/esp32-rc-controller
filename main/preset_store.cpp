@@ -260,7 +260,7 @@ void buildBuiltinPresetRcCar(PersistedConfig* cfg) {
     cfg->virtual_inputs[1].used = 1;
     cfg->virtual_inputs[1].input = static_cast<uint8_t>(InputId::Throttle);
     cfg->virtual_inputs[1].input_secondary = static_cast<uint8_t>(InputId::Brake);
-    cfg->virtual_inputs[1].deadzone = 5;
+    cfg->virtual_inputs[1].deadzone = 0;
     cfg->virtual_inputs[1].expo = 25;
     strncpy(cfg->virtual_inputs[1].name, "Throttle", sizeof(cfg->virtual_inputs[1].name) - 1);
 
@@ -361,7 +361,7 @@ void buildBuiltinPresetSkidSteer(PersistedConfig* cfg) {
         InputId secondary;
         uint8_t deadzone;
         uint8_t expo;
-    } vmap[] = {{"Drive", InputId::AxisY, InputId::None, 10, 25},
+    } vmap[] = {{"Drive", InputId::AxisY, InputId::None, 10, 20},
                 {"Steer", InputId::AxisX, InputId::None, 10, 20},
                 {"Arm", InputId::AxisRY, InputId::None, 10, 20},
                 {"Bucket", InputId::AxisRX, InputId::None, 10, 20}};
