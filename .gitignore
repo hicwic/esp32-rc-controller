@@ -1,0 +1,42 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+*.bak
+.idea/
+.vscode/
+
+# Build artifacts
+.pio/
+.pioenvs/
+build/
+dist/
+cmake-build-*/
+*.map
+*.elf
+*.bin
+*.hex
+*.uf2
+*.o
+
+# ESP-IDF / PlatformIO generated config
+sdkconfig
+sdkconfig.old
+sdkconfig.*
+!sdkconfig.defaults
+!sdkconfig.defaults.esp32c6
+
+# ESP-IDF managed dependencies cache (re-downloadable)
+managed_components/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Misc local files
+.clang_complete
+.gcc-flags.json
+.vagrant/
