@@ -10,7 +10,7 @@ constexpr int kMaxVirtualInputs = 16;
 constexpr int kMaxOutputChannels = 24;
 constexpr int kMaxUserPresets = 8;
 constexpr uint32_t kConfigMagic = 0x52434346;  // "RCCF"
-constexpr uint16_t kConfigVersion = 3;
+constexpr uint16_t kConfigVersion = 5;
 constexpr uint16_t kPresetDirectoryVersion = 2;
 constexpr const char* kPresetRcCar = "car";
 constexpr const char* kPresetExcavator = "excavator";
@@ -26,12 +26,16 @@ struct PersistedChannel {
     uint8_t type;
     uint8_t pin;
     uint8_t inverted;
+    uint8_t mix_mode;
     int8_t source_a;
     int8_t source_b;
     int8_t source_c;
     int8_t weight_a;
     int8_t weight_b;
     int8_t weight_c;
+    int8_t offset_a;
+    int8_t offset_b;
+    int8_t offset_c;
     uint8_t threshold;
     char name[24];
 };

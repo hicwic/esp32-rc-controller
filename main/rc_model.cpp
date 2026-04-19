@@ -22,6 +22,26 @@ bool g_togglePrimaryPressedPrev[kMaxVirtualInputs] = {false};
 bool g_toggleSecondaryPressedPrev[kMaxVirtualInputs] = {false};
 bool g_toggleModifierPressedPrev[kMaxVirtualInputs] = {false};
 int8_t g_toggle3Direction[kMaxVirtualInputs] = {1};
+bool g_directPrimaryPressedPrev[kMaxVirtualInputs] = {false};
+uint32_t g_lastRumbleMs[kMaxVirtualInputs] = {0};
+
+constexpr float kRumbleGain = 2.6f;
+
+uint8_t scaleRumble(uint8_t in) {
+    return static_cast<uint8_t>(constrain(lroundf(static_cast<float>(in) * kRumbleGain), 0, 255));
+}
+
+void playInputRumble(ControllerPtr ctl, int index, uint8_t weak, uint8_t strong, uint16_t durationMs) {
+    if (!ctl || !ctl->isConnected() || index < 0 || index >= kMaxVirtualInputs) {
+        return;
+    }
+    const uint32_t now = millis();
+    if (now - g_lastRumbleMs[index] < 80) {
+        return;
+    }
+    g_lastRumbleMs[index] = now;
+    ctl->playDualRumble(0, durationMs, scaleRumble(weak), scaleRumble(strong));
+}
 
 int clampPwmUs(int us) {
     return constrain(us, kPwmMinUs, kPwmMaxUs);
@@ -104,10 +124,17 @@ float evaluateToggleVirtualInput(int index, const VirtualInputConfig& in, Contro
         }
     }
 
+    const bool bipolar = (in.toggleRange == ToggleRangeMode::Bipolar);
     if (positions == 2) {
-        return g_togglePosition[index] ? 1.0f : -1.0f;
+        if (bipolar) {
+            return g_togglePosition[index] ? 1.0f : -1.0f;  // -100 / +100
+        }
+        return g_togglePosition[index] ? 1.0f : 0.0f;  // 0 / 100
     }
-    return static_cast<float>(g_togglePosition[index] - 1);  // 0->-1, 1->0, 2->+1
+    if (bipolar) {
+        return static_cast<float>(g_togglePosition[index] - 1);  // -100 / 0 / +100
+    }
+    return static_cast<float>(g_togglePosition[index]) * 0.5f;  // 0 / 50 / 100
 }
 
 int pwmFromOutput(const OutputChannelConfig& out) {
@@ -118,7 +145,7 @@ int pwmFromOutput(const OutputChannelConfig& out) {
 
 int switchFromOutput(const OutputChannelConfig& out) {
     const float n = evaluateOutputSignal(out);
-    const float analog01 = (n + 1.0f) * 0.5f;
+    const float analog01 = constrain(fabsf(n), 0.0f, 1.0f);
     const float threshold = constrain(out.thresholdPercent, 0, 100) / 100.0f;
     return analog01 >= threshold ? HIGH : LOW;
 }
@@ -199,10 +226,33 @@ float evaluateOutputSignal(const OutputChannelConfig& out) {
     if (!out.used) {
         return 0.0f;
     }
+    const float tA = sourceValueByIndex(out.sourceA) * (static_cast<float>(out.weightA) / 100.0f) +
+                     (static_cast<float>(out.offsetA) / 100.0f);
+    const float tB = sourceValueByIndex(out.sourceB) * (static_cast<float>(out.weightB) / 100.0f) +
+                     (static_cast<float>(out.offsetB) / 100.0f);
+    const float tC = sourceValueByIndex(out.sourceC) * (static_cast<float>(out.weightC) / 100.0f) +
+                     (static_cast<float>(out.offsetC) / 100.0f);
+
     float v = 0.0f;
-    v += sourceValueByIndex(out.sourceA) * (static_cast<float>(out.weightA) / 100.0f);
-    v += sourceValueByIndex(out.sourceB) * (static_cast<float>(out.weightB) / 100.0f);
-    v += sourceValueByIndex(out.sourceC) * (static_cast<float>(out.weightC) / 100.0f);
+    if (out.mixMode == MixMode::Multiply) {
+        bool hasTerm = false;
+        float p = 1.0f;
+        if (out.sourceA >= 0 || out.offsetA != 0) {
+            p *= tA;
+            hasTerm = true;
+        }
+        if (out.sourceB >= 0 || out.offsetB != 0) {
+            p *= tB;
+            hasTerm = true;
+        }
+        if (out.sourceC >= 0 || out.offsetC != 0) {
+            p *= tC;
+            hasTerm = true;
+        }
+        v = hasTerm ? p : 0.0f;
+    } else {
+        v = tA + tB + tC;
+    }
     v = constrain(v, -1.0f, 1.0f);
     if (out.inverted) {
         v = -v;
@@ -213,19 +263,57 @@ float evaluateOutputSignal(const OutputChannelConfig& out) {
 void evaluateVirtualRuntime(ControllerPtr ctl) {
     for (int i = 0; i < kMaxVirtualInputs; ++i) {
         const auto type = g_virtualInputs[i].inputType;
+        if (!ctl || !ctl->isConnected()) {
+            g_togglePrimaryPressedPrev[i] = false;
+            g_toggleSecondaryPressedPrev[i] = false;
+            g_toggleModifierPressedPrev[i] = false;
+            g_directPrimaryPressedPrev[i] = false;
+            g_virtualRuntime[i] = 0.0f;
+            continue;
+        }
         if (type == InputType::Toggle2Pos) {
+            const int8_t prevPos = g_togglePosition[i];
             g_virtualRuntime[i] = evaluateToggleVirtualInput(i, g_virtualInputs[i], ctl, 2);
+            if (g_virtualInputs[i].rumbleEnabled && prevPos != g_togglePosition[i]) {
+                if (g_togglePosition[i] == 0) {
+                    playInputRumble(ctl, i, 0x80, 0xC0, 90);
+                } else {
+                    playInputRumble(ctl, i, 0xC0, 0xFF, 140);
+                }
+            }
             continue;
         }
         if (type == InputType::Toggle3Pos) {
+            const int8_t prevPos = g_togglePosition[i];
             g_virtualRuntime[i] = evaluateToggleVirtualInput(i, g_virtualInputs[i], ctl, 3);
+            if (g_virtualInputs[i].rumbleEnabled && prevPos != g_togglePosition[i]) {
+                switch (g_togglePosition[i]) {
+                    case 0:
+                        playInputRumble(ctl, i, 0x70, 0xB0, 80);
+                        break;
+                    case 1:
+                        playInputRumble(ctl, i, 0xA0, 0xE0, 115);
+                        break;
+                    default:
+                        playInputRumble(ctl, i, 0xD0, 0xFF, 160);
+                        break;
+                }
+            }
             continue;
         }
+        const bool primaryPressed = isInputActive(g_virtualInputs[i].primary, ctl);
+        const bool primaryRise = primaryPressed && !g_directPrimaryPressedPrev[i];
+        g_directPrimaryPressedPrev[i] = primaryPressed;
         g_togglePrimaryPressedPrev[i] = false;
         g_toggleSecondaryPressedPrev[i] = false;
         g_toggleModifierPressedPrev[i] = false;
         g_toggle3Direction[i] = 1;
         g_virtualRuntime[i] = evaluateVirtualInput(g_virtualInputs[i], ctl);
+        const InputDefinition* def = getInputDefinition(g_virtualInputs[i].primary);
+        const bool digitalPrimary = def && def->kind == InputKind::Digital;
+        if (g_virtualInputs[i].rumbleEnabled && digitalPrimary && primaryRise) {
+            playInputRumble(ctl, i, 0xB0, 0xFF, 120);
+        }
     }
 }
 
@@ -285,6 +373,28 @@ bool setupOutputHardware(int index, String* error) {
     return true;
 }
 
+bool rebuildOutputHardware(String* error) {
+    for (int i = 0; i < kMaxOutputChannels; ++i) {
+        if (g_outputs[i].used) {
+            releaseOutputHardware(i);
+        }
+    }
+
+    for (int i = 0; i < kMaxOutputChannels; ++i) {
+        if (!g_outputs[i].used) {
+            continue;
+        }
+        String localError;
+        if (!setupOutputHardware(i, &localError)) {
+            if (error) {
+                *error = localError;
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
 void writeFailsafeForOutput(int index) {
     if (!g_outputs[index].used) {
         return;
@@ -320,7 +430,9 @@ bool exportCurrentConfig(PersistedConfig* out) {
         cfg.virtual_inputs[i].input_secondary = static_cast<uint8_t>(g_virtualInputs[i].secondary);
         cfg.virtual_inputs[i].input_modifier = static_cast<uint8_t>(g_virtualInputs[i].modifier);
         cfg.virtual_inputs[i].modifier_function = static_cast<uint8_t>(g_virtualInputs[i].modifierFunction);
-        cfg.virtual_inputs[i].reserved = static_cast<uint8_t>(g_virtualInputs[i].inputType);
+        cfg.virtual_inputs[i].reserved = static_cast<uint8_t>(static_cast<uint8_t>(g_virtualInputs[i].inputType) |
+                                                              (static_cast<uint8_t>(g_virtualInputs[i].toggleRange) << 4) |
+                                                              ((g_virtualInputs[i].rumbleEnabled ? 1 : 0) << 5));
         cfg.virtual_inputs[i].deadzone = static_cast<uint8_t>(constrain(g_virtualInputs[i].deadzonePercent, 0, 95));
         cfg.virtual_inputs[i].expo = static_cast<uint8_t>(constrain(g_virtualInputs[i].expoPercent, 0, 100));
         memcpy(cfg.virtual_inputs[i].name, g_virtualInputs[i].name, sizeof(cfg.virtual_inputs[i].name));
@@ -331,12 +443,16 @@ bool exportCurrentConfig(PersistedConfig* out) {
         cfg.channels[i].type = static_cast<uint8_t>(g_outputs[i].type);
         cfg.channels[i].pin = g_outputs[i].pin;
         cfg.channels[i].inverted = g_outputs[i].inverted ? 1 : 0;
+        cfg.channels[i].mix_mode = static_cast<uint8_t>(g_outputs[i].mixMode);
         cfg.channels[i].source_a = g_outputs[i].sourceA;
         cfg.channels[i].source_b = g_outputs[i].sourceB;
         cfg.channels[i].source_c = g_outputs[i].sourceC;
         cfg.channels[i].weight_a = g_outputs[i].weightA;
         cfg.channels[i].weight_b = g_outputs[i].weightB;
         cfg.channels[i].weight_c = g_outputs[i].weightC;
+        cfg.channels[i].offset_a = g_outputs[i].offsetA;
+        cfg.channels[i].offset_b = g_outputs[i].offsetB;
+        cfg.channels[i].offset_c = g_outputs[i].offsetC;
         cfg.channels[i].threshold = static_cast<uint8_t>(constrain(g_outputs[i].thresholdPercent, 0, 100));
         memcpy(cfg.channels[i].name, g_outputs[i].name, sizeof(cfg.channels[i].name));
     }
@@ -378,7 +494,10 @@ bool applyPersistedConfig(const PersistedConfig& cfg, String* errorOut) {
         g_virtualInputs[i].primary = static_cast<InputId>(pv.input);
         g_virtualInputs[i].secondary = static_cast<InputId>(pv.input_secondary);
         g_virtualInputs[i].modifier = static_cast<InputId>(pv.input_modifier);
-        switch (pv.reserved) {
+        const uint8_t inputTypeRaw = (pv.reserved & 0x0F);
+        const uint8_t rangeRaw = (pv.reserved >> 4) & 0x01;
+        const uint8_t rumbleRaw = (pv.reserved >> 5) & 0x01;
+        switch (inputTypeRaw) {
             case static_cast<uint8_t>(InputType::Toggle2Pos):
                 g_virtualInputs[i].inputType = InputType::Toggle2Pos;
                 break;
@@ -389,6 +508,8 @@ bool applyPersistedConfig(const PersistedConfig& cfg, String* errorOut) {
                 g_virtualInputs[i].inputType = InputType::Direct;
                 break;
         }
+        g_virtualInputs[i].toggleRange = (rangeRaw == 1) ? ToggleRangeMode::Bipolar : ToggleRangeMode::Unipolar;
+        g_virtualInputs[i].rumbleEnabled = rumbleRaw == 1;
         switch (pv.modifier_function) {
             case static_cast<uint8_t>(ModifierFunction::Reverse):
                 g_virtualInputs[i].modifierFunction = ModifierFunction::Reverse;
@@ -403,10 +524,16 @@ bool applyPersistedConfig(const PersistedConfig& cfg, String* errorOut) {
         g_togglePrimaryPressedPrev[i] = false;
         g_toggleSecondaryPressedPrev[i] = false;
         g_toggleModifierPressedPrev[i] = false;
+        g_directPrimaryPressedPrev[i] = false;
+        g_lastRumbleMs[i] = 0;
         if (g_virtualInputs[i].inputType == InputType::Toggle2Pos) {
             g_togglePosition[i] = 0;
         } else if (g_virtualInputs[i].inputType == InputType::Toggle3Pos) {
-            g_togglePosition[i] = 1;
+            // 3-position startup:
+            // - Unipolar: start at 0% so first press goes to 50%, then 100%.
+            // - Bipolar: start at center (0) to keep symmetric behavior.
+            g_togglePosition[i] =
+                (g_virtualInputs[i].toggleRange == ToggleRangeMode::Unipolar) ? 0 : 1;
             g_toggle3Direction[i] = 1;
         } else {
             g_togglePosition[i] = 0;
@@ -455,12 +582,16 @@ bool applyPersistedConfig(const PersistedConfig& cfg, String* errorOut) {
         g_outputs[i].type = (pc.type == static_cast<uint8_t>(ChannelType::Switch)) ? ChannelType::Switch : ChannelType::Pwm;
         g_outputs[i].pin = pc.pin;
         g_outputs[i].inverted = pc.inverted != 0;
+        g_outputs[i].mixMode = (pc.mix_mode == static_cast<uint8_t>(MixMode::Multiply)) ? MixMode::Multiply : MixMode::Add;
         g_outputs[i].sourceA = pc.source_a;
         g_outputs[i].sourceB = pc.source_b;
         g_outputs[i].sourceC = pc.source_c;
         g_outputs[i].weightA = constrain(pc.weight_a, -100, 100);
         g_outputs[i].weightB = constrain(pc.weight_b, -100, 100);
         g_outputs[i].weightC = constrain(pc.weight_c, -100, 100);
+        g_outputs[i].offsetA = constrain(pc.offset_a, -100, 100);
+        g_outputs[i].offsetB = constrain(pc.offset_b, -100, 100);
+        g_outputs[i].offsetC = constrain(pc.offset_c, -100, 100);
         g_outputs[i].thresholdPercent = constrain(pc.threshold, 0, 100);
         memcpy(g_outputs[i].name, pc.name, sizeof(g_outputs[i].name));
         g_outputs[i].name[sizeof(g_outputs[i].name) - 1] = '\0';
@@ -500,6 +631,10 @@ bool saveRuntimeConfigToNvs() {
 
 String outputTypeLabel(ChannelType type) {
     return type == ChannelType::Pwm ? "PWM" : "ON/OFF";
+}
+
+String mixModeLabel(MixMode mode) {
+    return mode == MixMode::Multiply ? "Multiply" : "Add";
 }
 
 }  // namespace rcctl

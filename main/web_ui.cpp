@@ -102,7 +102,8 @@ String buildWebUiPage(const String& inputsJson) {
       <div class="row" style="justify-content:space-between"><strong id="virtualTitle">Add Input</strong><button class="btn alt" id="virtualCloseBtn" type="button">Close</button></div>
       <input id="virtualIndex" type="hidden">
       <div class="grid">
-        <div><label class="lbl">Name / Input type</label><div class="inline"><input id="virtualName" class="grow"><select id="virtualInputType" class="grow"><option value="0">Direct</option><option value="1">2-position</option><option value="2">3-position</option></select></div></div>
+        <div><label class="lbl">Name</label><input id="virtualName" class="grow"></div>
+        <div><label class="lbl">Input type</label><div class="inline"><select id="virtualInputType" class="grow"><option value="0">Direct</option><option value="1">2-position</option><option value="2">3-position</option></select><label class="hint"><input id="virtualUnipolar" type="checkbox"> Unipolar</label><label class="hint"><input id="virtualRumble" type="checkbox"> Rumble</label></div></div>
         <div><label class="lbl">Deadzone / Expo (%)</label><div class="inline"><input id="virtualDeadzone" type="number" min="0" max="95" class="grow"><input id="virtualExpo" type="number" min="0" max="100" class="grow"></div></div>
         <div><label class="lbl">Primary input</label><div class="inline"><select id="virtualInput" class="grow"></select><button class="btn alt mini" id="learnPrimaryBtn" type="button">Learn</button></div></div>
         <div><label class="lbl">Secondary input (optional)</label><div class="inline"><select id="virtualSecondary" class="grow"></select><button class="btn alt mini" id="learnSecondaryBtn" type="button">Learn</button></div></div>
@@ -120,9 +121,10 @@ String buildWebUiPage(const String& inputsJson) {
       <div class="grid">
         <div><label class="lbl">Name</label><input id="outputName"></div>
         <div><label class="lbl">GPIO / Type</label><div class="inline"><select id="outputPin" class="grow"></select><select id="outputType" class="grow"><option value="0">PWM</option><option value="1">ON/OFF</option></select></div></div>
-        <div><label class="lbl">Source A / Weight</label><div class="inline"><select id="sourceA" class="grow"></select><input id="weightA" type="number" min="-100" max="100" class="grow"></div></div>
-        <div><label class="lbl">Source B / Weight</label><div class="inline"><select id="sourceB" class="grow"></select><input id="weightB" type="number" min="-100" max="100" class="grow"></div></div>
-        <div><label class="lbl">Source C / Weight</label><div class="inline"><select id="sourceC" class="grow"></select><input id="weightC" type="number" min="-100" max="100" class="grow"></div></div>
+        <div><label class="lbl">Mix Mode</label><select id="mixMode"><option value="0">Add</option><option value="1">Multiply</option></select></div>
+        <div><label class="lbl">Source A / Mult % / Offset %</label><div class="inline"><select id="sourceA" class="grow"></select><input id="weightA" type="number" min="-100" max="100" class="grow"><input id="offsetA" type="number" min="-100" max="100" class="grow"></div></div>
+        <div><label class="lbl">Source B / Mult % / Offset %</label><div class="inline"><select id="sourceB" class="grow"></select><input id="weightB" type="number" min="-100" max="100" class="grow"><input id="offsetB" type="number" min="-100" max="100" class="grow"></div></div>
+        <div><label class="lbl">Source C / Mult % / Offset %</label><div class="inline"><select id="sourceC" class="grow"></select><input id="weightC" type="number" min="-100" max="100" class="grow"><input id="offsetC" type="number" min="-100" max="100" class="grow"></div></div>
         <div id="thresholdRow"><label class="lbl">Activation threshold (%) - ON/OFF only</label><input id="outputThreshold" type="number" min="0" max="100"></div>
       </div>
       <div class="row"><label class="hint"><input id="outputInverted" type="checkbox"> Reversed</label></div>
@@ -159,6 +161,7 @@ String buildWebUiPage(const String& inputsJson) {
     const INPUTS = __INPUTS_JSON__;
     const state = {virtual_inputs:[], outputs:[], presets:[], currentModel:"-", bootModel:"-", modelDirty:false, pwmPins:[], apSsid:"", apPassword:""};
     const createState = {forkReadonly:false};
+    const outputEditState = {allowRewire:false};
     let suppressPresetChange = false;
     let toastTimer = 0;
 
@@ -188,6 +191,8 @@ String buildWebUiPage(const String& inputsJson) {
       virtualExpo:document.getElementById('virtualExpo'),
       virtualInput:document.getElementById('virtualInput'),
       virtualInputType:document.getElementById('virtualInputType'),
+      virtualUnipolar:document.getElementById('virtualUnipolar'),
+      virtualRumble:document.getElementById('virtualRumble'),
       virtualSecondary:document.getElementById('virtualSecondary'),
       virtualModifier:document.getElementById('virtualModifier'),
       virtualModifierFn:document.getElementById('virtualModifierFn'),
@@ -206,9 +211,13 @@ String buildWebUiPage(const String& inputsJson) {
       sourceA:document.getElementById('sourceA'),
       sourceB:document.getElementById('sourceB'),
       sourceC:document.getElementById('sourceC'),
+      mixMode:document.getElementById('mixMode'),
       weightA:document.getElementById('weightA'),
       weightB:document.getElementById('weightB'),
       weightC:document.getElementById('weightC'),
+      offsetA:document.getElementById('offsetA'),
+      offsetB:document.getElementById('offsetB'),
+      offsetC:document.getElementById('offsetC'),
       outputThreshold:document.getElementById('outputThreshold'),
       thresholdRow:document.getElementById('thresholdRow'),
       outputInverted:document.getElementById('outputInverted'),
@@ -286,6 +295,16 @@ String buildWebUiPage(const String& inputsJson) {
       if (v===2) return "3-position";
       return "Direct";
     }
+    function rangeModeLabel(v){
+      return Number(v)===1 ? "Bipolar" : "Unipolar";
+    }
+    function updateVirtualRangeUi(){
+      const isToggle = Number(ui.virtualInputType.value)===1 || Number(ui.virtualInputType.value)===2;
+      ui.virtualUnipolar.disabled = !isToggle;
+      if (!isToggle){
+        ui.virtualUnipolar.checked = false;
+      }
+    }
     function signedBar(v){
       const n=Number(v)||0; const width=Math.round(Math.abs(n)*50); const left=n>=0?50:(50-width);
       return "<div class='bar'><div class='bar-mid'></div><div class='bar-val' style='left:"+left+"%;width:"+width+"%'></div></div>";
@@ -297,9 +316,14 @@ String buildWebUiPage(const String& inputsJson) {
       const focused = document.activeElement===ui.presetSelect;
       if (!focused && ui.presetSelect.dataset.sig!==sig){
         const current=state.currentModel;
+        const previousSelection = ui.presetSelect.value;
         ui.presetSelect.innerHTML=(state.presets||[]).map(function(p){ const label=p+(p===state.bootModel?" (default)":""); return "<option value='"+esc(p)+"'>"+esc(label)+"</option>"; }).join("");
         ui.presetSelect.dataset.sig=sig;
-        if ((state.presets||[]).indexOf(current)>=0){ suppressPresetChange=true; ui.presetSelect.value=current; suppressPresetChange=false; }
+        let wanted = current;
+        if ((state.presets||[]).indexOf(previousSelection) >= 0) {
+          wanted = previousSelection;
+        }
+        if ((state.presets||[]).indexOf(wanted)>=0){ suppressPresetChange=true; ui.presetSelect.value=wanted; suppressPresetChange=false; }
       }
     }
     function renderCloneSelect(){
@@ -318,7 +342,8 @@ String buildWebUiPage(const String& inputsJson) {
         const type = Number(v.input_type)||0;
         const modInput = Number(v.input_modifier)>0?(" | mod "+inputLabel(v.input_modifier)):"";
         const fnTxt = fn>0?(" | fn "+inputFunctionLabel(fn)):"";
-        const typeTxt = " | type " + inputTypeLabel(type);
+        const rumbleTxt = v.rumble ? " | rumble ON" : "";
+        const typeTxt = " | type " + inputTypeLabel(type) + " | range " + rangeModeLabel(v.range_mode||0) + rumbleTxt;
         const mod = typeTxt + modInput + fnTxt;
         return "<div class='card "+(v.active?"active":"")+"' data-vidx='"+v.index+"'>"
           +"<div class='title'>IN"+v.index+" - "+esc(v.name)+"</div>"
@@ -334,10 +359,11 @@ String buildWebUiPage(const String& inputsJson) {
     }
     function renderOutputCards(){
       ui.outputCards.innerHTML=(state.outputs||[]).map(function(o){
-        const mix = sourceLabel(o.source_a)+"*"+o.weight_a+"% + "+sourceLabel(o.source_b)+"*"+o.weight_b+"% + "+sourceLabel(o.source_c)+"*"+o.weight_c+"%";
+        const op = Number(o.mix_mode)===1 ? " x " : " + ";
+        const mix = sourceLabel(o.source_a)+"*"+o.weight_a+"%+"+o.offset_a+"%" + op + sourceLabel(o.source_b)+"*"+o.weight_b+"%+"+o.offset_b+"%" + op + sourceLabel(o.source_c)+"*"+o.weight_c+"%+"+o.offset_c+"%";
         return "<div class='card "+(o.active?"active":"")+"' data-oidx='"+o.index+"'>"
           +"<div class='title'>CH"+o.index+" - "+esc(o.name)+"</div>"
-          +"<div class='meta'><span>GPIO "+o.pin+"</span><span>"+esc(o.type_label)+"</span><span>"+esc(mix)+"</span></div>"
+          +"<div class='meta'><span>GPIO "+o.pin+"</span><span>"+esc(o.type_label)+"</span><span>"+esc(o.mix_mode_label||"Add")+"</span><span>"+esc(mix)+"</span></div>"
           +signedBar(o.signed_activity)
           +"<div class='row' style='margin-top:8px'><button class='btn ghost' data-oact='edit'>Edit</button><button class='btn danger' data-oact='delete'>Delete</button></div>"
           +"</div>";
@@ -350,6 +376,10 @@ String buildWebUiPage(const String& inputsJson) {
       ui.virtualName.value=mode==="add"?"Input":v.name;
       fillInputSelect(ui.virtualInput, mode==="add"?1:v.input, false);
       ui.virtualInputType.value=mode==="add"?"0":String(v.input_type||0);
+      const rangeMode = mode==="add" ? 1 : Number((v.range_mode !== undefined && v.range_mode !== null) ? v.range_mode : 1);
+      ui.virtualUnipolar.checked = rangeMode===0;
+      ui.virtualRumble.checked = mode==="add" ? false : !!v.rumble;
+      updateVirtualRangeUi();
       fillInputSelect(ui.virtualSecondary, mode==="add"?0:v.input_secondary, true);
       fillInputSelect(ui.virtualModifier, mode==="add"?0:v.input_modifier, true);
       ui.virtualModifierFn.value=mode==="add"?"0":String(v.modifier_function||0);
@@ -360,6 +390,7 @@ String buildWebUiPage(const String& inputsJson) {
     }
     function closeVirtualModal(){ ui.virtualModal.classList.remove("open"); ui.virtualLearnStatus.textContent=""; }
     function openOutputModal(mode, o){
+      outputEditState.allowRewire = false;
       ui.outputTitle.textContent=mode==="add"?"Add Output":"Edit Output";
       ui.outputIndex.value=mode==="add"?"":String(o.index);
       ui.outputName.value=mode==="add"?"Output":o.name;
@@ -368,9 +399,13 @@ String buildWebUiPage(const String& inputsJson) {
       fillVirtualSourceSelect(ui.sourceA, mode==="add"?-1:o.source_a);
       fillVirtualSourceSelect(ui.sourceB, mode==="add"?-1:o.source_b);
       fillVirtualSourceSelect(ui.sourceC, mode==="add"?-1:o.source_c);
+      ui.mixMode.value=mode==="add"?"1":String((o.mix_mode !== undefined && o.mix_mode !== null) ? o.mix_mode : 1);
       ui.weightA.value=mode==="add"?"100":String(o.weight_a);
       ui.weightB.value=mode==="add"?"0":String(o.weight_b);
       ui.weightC.value=mode==="add"?"0":String(o.weight_c);
+      ui.offsetA.value=mode==="add"?"0":String(o.offset_a||0);
+      ui.offsetB.value=mode==="add"?"0":String(o.offset_b||0);
+      ui.offsetC.value=mode==="add"?"0":String(o.offset_c||0);
       ui.outputThreshold.value=mode==="add"?"50":String(o.threshold);
       ui.outputInverted.checked=mode==="add"?false:!!o.inverted;
       ui.outputError.textContent="";
@@ -409,7 +444,8 @@ String buildWebUiPage(const String& inputsJson) {
         renderPresetSelect(); renderCloneSelect(); renderVirtualCards(); renderOutputCards();
         ui.saveModelBtn.disabled=!state.modelDirty;
         ui.revertModelBtn.disabled=!state.modelDirty;
-        ui.deletePresetBtn.disabled=isReadonlyPreset(state.currentModel);
+        const selectedForDelete = ui.presetSelect.value || state.currentModel;
+        ui.deletePresetBtn.disabled=isReadonlyPreset(selectedForDelete);
       }catch(_e){ setMsg("Refresh failed"); }
     }
 
@@ -448,7 +484,14 @@ String buildWebUiPage(const String& inputsJson) {
       setMsg(r.message||"Saved"); refresh();
     });
     ui.revertModelBtn.addEventListener("click", async function(){ const r=await post("/api/model_revert"); setMsg(r.message||"Reverted"); refresh(); });
-    ui.deletePresetBtn.addEventListener("click", async function(){ const n=state.currentModel; if(!n||isReadonlyPreset(n)) return; if(!confirm("Delete preset '"+n+"'?")) return; const r=await post("/api/model_delete",{name:n}); setMsg(r.message||"Deleted"); refresh(); });
+    ui.deletePresetBtn.addEventListener("click", async function(){
+      const n=ui.presetSelect.value || state.currentModel;
+      if(!n||isReadonlyPreset(n)) return;
+      if(!confirm("Delete preset '"+n+"'?")) return;
+      const r=await post("/api/model_delete",{name:n});
+      setMsg(r.message||"Deleted");
+      refresh();
+    });
 
     ui.pairOnBtn.addEventListener("click", async function(){ const r=await post("/api/pairing_on"); setMsg(r.message||"Pairing on"); refresh(); });
     ui.pairOffBtn.addEventListener("click", async function(){ const r=await post("/api/pairing_off"); setMsg(r.message||"Pairing off"); refresh(); });
@@ -482,12 +525,13 @@ String buildWebUiPage(const String& inputsJson) {
 
     ui.virtualCloseBtn.addEventListener("click", closeVirtualModal);
     ui.virtualModal.addEventListener("click", function(ev){ if(ev.target===ui.virtualModal) closeVirtualModal(); });
+    ui.virtualInputType.addEventListener("change", updateVirtualRangeUi);
     ui.learnPrimaryBtn.addEventListener("click", function(){ learnInto(ui.virtualInput); });
     ui.learnSecondaryBtn.addEventListener("click", function(){ learnInto(ui.virtualSecondary); });
     ui.learnModifierBtn.addEventListener("click", function(){ learnInto(ui.virtualModifier); });
     ui.virtualSaveBtn.addEventListener("click", async function(){
       const isAdd=!ui.virtualIndex.value;
-      const payload={name:ui.virtualName.value,input:ui.virtualInput.value,input_type:ui.virtualInputType.value,input_secondary:ui.virtualSecondary.value,input_modifier:ui.virtualModifier.value,modifier_function:ui.virtualModifierFn.value,deadzone:ui.virtualDeadzone.value,expo:ui.virtualExpo.value};
+      const payload={name:ui.virtualName.value,input:ui.virtualInput.value,input_type:ui.virtualInputType.value,range_mode:ui.virtualUnipolar.checked?"0":"1",rumble:ui.virtualRumble.checked?"1":"0",input_secondary:ui.virtualSecondary.value,input_modifier:ui.virtualModifier.value,modifier_function:ui.virtualModifierFn.value,deadzone:ui.virtualDeadzone.value,expo:ui.virtualExpo.value};
       if(!isAdd) payload.index=ui.virtualIndex.value;
       const r=await post(isAdd?"/api/virtual_add":"/api/virtual_update",payload);
       setMsg(r.message||(r.ok?"Saved":"Error")); if(r.ok) closeVirtualModal(); refresh();
@@ -496,9 +540,14 @@ String buildWebUiPage(const String& inputsJson) {
     ui.outputCloseBtn.addEventListener("click", closeOutputModal);
     ui.outputModal.addEventListener("click", function(ev){ if(ev.target===ui.outputModal) closeOutputModal(); });
     ui.outputType.addEventListener("change", updateOutputTypeUi);
+    [ui.outputPin, ui.outputType, ui.sourceA, ui.sourceB, ui.sourceC, ui.mixMode, ui.weightA, ui.weightB, ui.weightC, ui.offsetA, ui.offsetB, ui.offsetC].forEach(function(el){
+      el.addEventListener("change", function(){ outputEditState.allowRewire = true; });
+      el.addEventListener("input", function(){ outputEditState.allowRewire = true; });
+    });
     ui.outputSaveBtn.addEventListener("click", async function(){
       const isAdd=!ui.outputIndex.value;
-      const payload={name:ui.outputName.value,pin:ui.outputPin.value,type:ui.outputType.value,source_a:ui.sourceA.value,source_b:ui.sourceB.value,source_c:ui.sourceC.value,weight_a:ui.weightA.value,weight_b:ui.weightB.value,weight_c:ui.weightC.value,threshold:ui.outputThreshold.value,inverted:ui.outputInverted.checked?"1":"0"};
+      const payload={name:ui.outputName.value,pin:ui.outputPin.value,type:ui.outputType.value,source_a:ui.sourceA.value,source_b:ui.sourceB.value,source_c:ui.sourceC.value,mix_mode:ui.mixMode.value,weight_a:ui.weightA.value,weight_b:ui.weightB.value,weight_c:ui.weightC.value,offset_a:ui.offsetA.value,offset_b:ui.offsetB.value,offset_c:ui.offsetC.value,threshold:ui.outputThreshold.value,inverted:ui.outputInverted.checked?"1":"0"};
+      payload.allow_rewire = outputEditState.allowRewire ? "1" : "0";
       if(!isAdd) payload.index=ui.outputIndex.value;
       const r=await post(isAdd?"/api/output_add":"/api/output_update",payload);
       setMsg(r.message||(r.ok?"Saved":"Error"));

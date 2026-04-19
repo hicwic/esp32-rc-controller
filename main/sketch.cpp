@@ -15,6 +15,7 @@
 #include "rc_model.h"
 #include "web_ui.h"
 
+#include <math.h>
 #include <nvs.h>
 #include <nvs_flash.h>
 
@@ -32,6 +33,7 @@ using rcctl::kPresetSkidSteer;
 
 constexpr uint32_t kSignalTimeoutMs = 450;
 constexpr uint32_t kUiRefreshMs = 2500;
+constexpr uint32_t kIoTraceMs = 350;
 
 constexpr const char* kDefaultApSsid = "RC-Controller";
 constexpr const char* kDefaultApPassword = "rccontrol";
@@ -46,9 +48,14 @@ constexpr uint32_t kBtAutoScanOffMs = 12000;
 constexpr uint32_t kBtPairingScanOnMs = 3500;
 constexpr uint32_t kBtPairingScanOffMs = 900;
 
+#ifndef RCCTL_ENABLE_IO_TRACE
+#define RCCTL_ENABLE_IO_TRACE 1
+#endif
+
 ControllerPtr g_gamepad = nullptr;
 uint32_t g_lastPacketMs = 0;
 uint32_t g_lastUiLogMs = 0;
+uint32_t g_lastIoTraceMs = 0;
 bool g_signalTimedOut = false;
 bool g_pairingScanEnabled = false;
 uint32_t g_pairingScanUntilMs = 0;
@@ -68,6 +75,154 @@ VirtualInputConfig* g_virtualInputs = rcctl::virtualInputs();
 OutputChannelConfig* g_outputs = rcctl::outputs();
 float* g_virtualRuntime = rcctl::virtualRuntimeValues();
 float* g_outputRuntime = rcctl::outputRuntimeValues();
+
+const char* inputTypeLabel(rcctl::InputType t) {
+    switch (t) {
+        case rcctl::InputType::Toggle2Pos:
+            return "T2";
+        case rcctl::InputType::Toggle3Pos:
+            return "T3";
+        default:
+            return "DIR";
+    }
+}
+
+const char* toggleRangeLabel(rcctl::ToggleRangeMode r) {
+    switch (r) {
+        case rcctl::ToggleRangeMode::Bipolar:
+            return "BI";
+        default:
+            return "UNI";
+    }
+}
+
+const char* modifierFunctionLabel(rcctl::ModifierFunction f) {
+    switch (f) {
+        case rcctl::ModifierFunction::Reverse:
+            return "REV";
+        case rcctl::ModifierFunction::Center:
+            return "CTR";
+        default:
+            return "-";
+    }
+}
+
+const char* inputIdLabel(InputId id) {
+    const InputDefinition* d = getInputDefinition(id);
+    return d ? d->label : "None";
+}
+
+int pwmUsFromSignal(float signal) {
+    const float clamped = constrain(signal, -1.0f, 1.0f);
+    return static_cast<int>(lroundf(1500.0f + clamped * 500.0f));
+}
+
+void emitIoTrace(ControllerPtr ctl) {
+#if RCCTL_ENABLE_IO_TRACE
+    if (!ctl || !ctl->isConnected()) {
+        Console.println("TRACE: gamepad=OFF");
+        return;
+    }
+
+    String inLine = "TRACE IN : ";
+    bool firstIn = true;
+    for (int i = 0; i < kMaxVirtualInputs; ++i) {
+        const auto& in = g_virtualInputs[i];
+        if (!in.used) {
+            continue;
+        }
+        if (!firstIn) {
+            inLine += " | ";
+        }
+        firstIn = false;
+        const float p = normalizedForInput(in.primary, ctl);
+        const float s = (in.secondary != InputId::None) ? normalizedForInput(in.secondary, ctl) : 0.0f;
+        const bool mod = (in.modifier != InputId::None) ? isInputActive(in.modifier, ctl) : false;
+        inLine += "IN";
+        inLine += String(i);
+        inLine += "(";
+        inLine += inputTypeLabel(in.inputType);
+        inLine += "/";
+        inLine += modifierFunctionLabel(in.modifierFunction);
+        inLine += "/";
+        inLine += toggleRangeLabel(in.toggleRange);
+        inLine += ") ";
+        inLine += String(in.name);
+        inLine += " p=";
+        inLine += String(p, 2);
+        if (in.secondary != InputId::None) {
+            inLine += " s=";
+            inLine += String(s, 2);
+        }
+        if (in.modifier != InputId::None) {
+            inLine += " m=";
+            inLine += mod ? "1" : "0";
+        }
+        inLine += " v=";
+        inLine += String(g_virtualRuntime[i], 2);
+    }
+
+    String outLine = "TRACE OUT: ";
+    bool firstOut = true;
+    for (int i = 0; i < kMaxOutputChannels; ++i) {
+        const auto& out = g_outputs[i];
+        if (!out.used) {
+            continue;
+        }
+        if (!firstOut) {
+            outLine += " | ";
+        }
+        firstOut = false;
+        const float sig = g_outputRuntime[i];
+        outLine += "CH";
+        outLine += String(i);
+        outLine += " ";
+        outLine += String(out.name);
+        outLine += " pin=";
+        outLine += String(out.pin);
+        outLine += " mix=(";
+        outLine += String(out.sourceA);
+        outLine += "*";
+        outLine += String(out.weightA);
+        outLine += "+";
+        outLine += String(out.offsetA);
+        outLine += " ";
+        outLine += ",";
+        outLine += String(out.sourceB);
+        outLine += "*";
+        outLine += String(out.weightB);
+        outLine += "+";
+        outLine += String(out.offsetB);
+        outLine += " ";
+        outLine += ",";
+        outLine += String(out.sourceC);
+        outLine += "*";
+        outLine += String(out.weightC);
+        outLine += "+";
+        outLine += String(out.offsetC);
+        outLine += ")";
+        outLine += " mode=";
+        outLine += rcctl::mixModeLabel(out.mixMode);
+        outLine += " sig=";
+        outLine += String(sig, 2);
+        if (out.type == rcctl::ChannelType::Pwm) {
+            outLine += " pwm=";
+            outLine += String(pwmUsFromSignal(sig));
+            outLine += "us";
+        } else {
+            const float analog01 = constrain(fabsf(sig), 0.0f, 1.0f);
+            const float thr = constrain(out.thresholdPercent, 0, 100) / 100.0f;
+            outLine += " sw=";
+            outLine += (analog01 >= thr) ? "HIGH" : "LOW";
+        }
+    }
+
+    Console.println(inLine);
+    Console.println(outLine);
+#else
+    (void)ctl;
+#endif
+}
 
 void setBtScanActive(bool enabled, const char* reason) {
     if (kDiagDisableBluepad32) {
@@ -123,7 +278,12 @@ int parseIntArg(const String& name, int fallback) {
     if (!g_server.hasArg(name)) {
         return fallback;
     }
-    return g_server.arg(name).toInt();
+    String v = g_server.arg(name);
+    v.trim();
+    if (v.isEmpty()) {
+        return fallback;
+    }
+    return v.toInt();
 }
 
 bool parseBoolArg(const String& name, bool fallback = false) {
@@ -329,9 +489,15 @@ void redirectCaptivePortal() {
 }
 
 void parseVirtualFromRequest(VirtualInputConfig* out, int existingIndex) {
-    out->primary = static_cast<InputId>(parseIntArg("input", static_cast<int>(InputId::AxisX)));
-    out->secondary = static_cast<InputId>(parseIntArg("input_secondary", static_cast<int>(InputId::None)));
-    const int type = parseIntArg("input_type", 0);
+    const int fallbackPrimary = (out && out->primary != InputId::None) ? static_cast<int>(out->primary)
+                                                                        : static_cast<int>(InputId::AxisX);
+    const int fallbackSecondary = out ? static_cast<int>(out->secondary) : static_cast<int>(InputId::None);
+    const int fallbackType = out ? static_cast<int>(out->inputType) : 0;
+    const int fallbackRange = out ? static_cast<int>(out->toggleRange) : 1;
+    const bool fallbackRumble = out ? out->rumbleEnabled : false;
+    out->primary = static_cast<InputId>(parseIntArg("input", fallbackPrimary));
+    out->secondary = static_cast<InputId>(parseIntArg("input_secondary", fallbackSecondary));
+    const int type = parseIntArg("input_type", fallbackType);
     switch (type) {
         case 1:
             out->inputType = rcctl::InputType::Toggle2Pos;
@@ -343,8 +509,15 @@ void parseVirtualFromRequest(VirtualInputConfig* out, int existingIndex) {
             out->inputType = rcctl::InputType::Direct;
             break;
     }
-    out->modifier = static_cast<InputId>(parseIntArg("input_modifier", static_cast<int>(InputId::None)));
-    const int fn = parseIntArg("modifier_function", 0);
+    out->toggleRange = (parseIntArg("range_mode", fallbackRange) == 1) ? rcctl::ToggleRangeMode::Bipolar
+                                                                        : rcctl::ToggleRangeMode::Unipolar;
+    out->rumbleEnabled = parseBoolArg("rumble", fallbackRumble);
+    const int fallbackModifier = out ? static_cast<int>(out->modifier) : static_cast<int>(InputId::None);
+    const int fallbackFn = out ? static_cast<int>(out->modifierFunction) : 0;
+    const int fallbackDz = out ? out->deadzonePercent : 10;
+    const int fallbackExpo = out ? out->expoPercent : 0;
+    out->modifier = static_cast<InputId>(parseIntArg("input_modifier", fallbackModifier));
+    const int fn = parseIntArg("modifier_function", fallbackFn);
     switch (fn) {
         case 1:
             out->modifierFunction = rcctl::ModifierFunction::Reverse;
@@ -356,8 +529,8 @@ void parseVirtualFromRequest(VirtualInputConfig* out, int existingIndex) {
             out->modifierFunction = rcctl::ModifierFunction::None;
             break;
     }
-    out->deadzonePercent = constrain(parseIntArg("deadzone", 10), 0, 95);
-    out->expoPercent = constrain(parseIntArg("expo", 0), 0, 100);
+    out->deadzonePercent = constrain(parseIntArg("deadzone", fallbackDz), 0, 95);
+    out->expoPercent = constrain(parseIntArg("expo", fallbackExpo), 0, 100);
 
     String name = g_server.hasArg("name") ? g_server.arg("name") : "Input";
     name.trim();
@@ -368,18 +541,37 @@ void parseVirtualFromRequest(VirtualInputConfig* out, int existingIndex) {
 }
 
 void parseOutputFromRequest(OutputChannelConfig* out, int existingIndex) {
-    int typeValue = parseIntArg("type", static_cast<int>(rcctl::ChannelType::Pwm));
+    const int fallbackType = out ? static_cast<int>(out->type) : static_cast<int>(rcctl::ChannelType::Pwm);
+    const int fallbackPin = out ? out->pin : 13;
+    const int fallbackThreshold = out ? out->thresholdPercent : 50;
+    const int fallbackSourceA = out ? out->sourceA : -1;
+    const int fallbackSourceB = out ? out->sourceB : -1;
+    const int fallbackSourceC = out ? out->sourceC : -1;
+    const int fallbackMixMode = out ? static_cast<int>(out->mixMode) : 1;
+    const int fallbackWeightA = out ? out->weightA : 100;
+    const int fallbackWeightB = out ? out->weightB : 0;
+    const int fallbackWeightC = out ? out->weightC : 0;
+    const int fallbackOffsetA = out ? out->offsetA : 0;
+    const int fallbackOffsetB = out ? out->offsetB : 0;
+    const int fallbackOffsetC = out ? out->offsetC : 0;
+    const bool fallbackInverted = out ? out->inverted : false;
+
+    int typeValue = parseIntArg("type", fallbackType);
     out->type = (typeValue == static_cast<int>(rcctl::ChannelType::Switch)) ? rcctl::ChannelType::Switch
                                                                              : rcctl::ChannelType::Pwm;
-    out->pin = static_cast<uint8_t>(constrain(parseIntArg("pin", 13), 0, 48));
-    out->inverted = parseBoolArg("inverted", false);
-    out->thresholdPercent = constrain(parseIntArg("threshold", 50), 0, 100);
-    out->sourceA = static_cast<int8_t>(constrain(parseIntArg("source_a", -1), -1, kMaxVirtualInputs - 1));
-    out->sourceB = static_cast<int8_t>(constrain(parseIntArg("source_b", -1), -1, kMaxVirtualInputs - 1));
-    out->sourceC = static_cast<int8_t>(constrain(parseIntArg("source_c", -1), -1, kMaxVirtualInputs - 1));
-    out->weightA = static_cast<int8_t>(constrain(parseIntArg("weight_a", 100), -100, 100));
-    out->weightB = static_cast<int8_t>(constrain(parseIntArg("weight_b", 0), -100, 100));
-    out->weightC = static_cast<int8_t>(constrain(parseIntArg("weight_c", 0), -100, 100));
+    out->pin = static_cast<uint8_t>(constrain(parseIntArg("pin", fallbackPin), 0, 48));
+    out->inverted = parseBoolArg("inverted", fallbackInverted);
+    out->thresholdPercent = constrain(parseIntArg("threshold", fallbackThreshold), 0, 100);
+    out->sourceA = static_cast<int8_t>(constrain(parseIntArg("source_a", fallbackSourceA), -1, kMaxVirtualInputs - 1));
+    out->sourceB = static_cast<int8_t>(constrain(parseIntArg("source_b", fallbackSourceB), -1, kMaxVirtualInputs - 1));
+    out->sourceC = static_cast<int8_t>(constrain(parseIntArg("source_c", fallbackSourceC), -1, kMaxVirtualInputs - 1));
+    out->mixMode = (parseIntArg("mix_mode", fallbackMixMode) == 1) ? rcctl::MixMode::Multiply : rcctl::MixMode::Add;
+    out->weightA = static_cast<int8_t>(constrain(parseIntArg("weight_a", fallbackWeightA), -100, 100));
+    out->weightB = static_cast<int8_t>(constrain(parseIntArg("weight_b", fallbackWeightB), -100, 100));
+    out->weightC = static_cast<int8_t>(constrain(parseIntArg("weight_c", fallbackWeightC), -100, 100));
+    out->offsetA = static_cast<int8_t>(constrain(parseIntArg("offset_a", fallbackOffsetA), -100, 100));
+    out->offsetB = static_cast<int8_t>(constrain(parseIntArg("offset_b", fallbackOffsetB), -100, 100));
+    out->offsetC = static_cast<int8_t>(constrain(parseIntArg("offset_c", fallbackOffsetC), -100, 100));
 
     String name = g_server.hasArg("name") ? g_server.arg("name") : "Output";
     name.trim();
@@ -430,6 +622,9 @@ void handleApiState() {
         json += ",\"input\":" + String(static_cast<int>(g_virtualInputs[i].primary));
         json += ",\"input_secondary\":" + String(static_cast<int>(g_virtualInputs[i].secondary));
         json += ",\"input_type\":" + String(static_cast<int>(g_virtualInputs[i].inputType));
+        json += ",\"range_mode\":" + String(static_cast<int>(g_virtualInputs[i].toggleRange));
+        json += ",\"rumble\":";
+        json += g_virtualInputs[i].rumbleEnabled ? "true" : "false";
         json += ",\"input_modifier\":" + String(static_cast<int>(g_virtualInputs[i].modifier));
         json += ",\"modifier_function\":" + String(static_cast<int>(g_virtualInputs[i].modifierFunction));
         json += ",\"deadzone\":" + String(g_virtualInputs[i].deadzonePercent);
@@ -461,9 +656,14 @@ void handleApiState() {
         json += ",\"source_a\":" + String(g_outputs[i].sourceA);
         json += ",\"source_b\":" + String(g_outputs[i].sourceB);
         json += ",\"source_c\":" + String(g_outputs[i].sourceC);
+        json += ",\"mix_mode\":" + String(static_cast<int>(g_outputs[i].mixMode));
+        json += ",\"mix_mode_label\":\"" + rcctl::mixModeLabel(g_outputs[i].mixMode) + "\"";
         json += ",\"weight_a\":" + String(g_outputs[i].weightA);
         json += ",\"weight_b\":" + String(g_outputs[i].weightB);
         json += ",\"weight_c\":" + String(g_outputs[i].weightC);
+        json += ",\"offset_a\":" + String(g_outputs[i].offsetA);
+        json += ",\"offset_b\":" + String(g_outputs[i].offsetB);
+        json += ",\"offset_c\":" + String(g_outputs[i].offsetC);
         json += ",\"threshold\":" + String(g_outputs[i].thresholdPercent);
         json += ",\"inverted\":";
         json += g_outputs[i].inverted ? "true" : "false";
@@ -545,14 +745,17 @@ void handleApiVirtualDelete() {
         if (g_outputs[i].sourceA == index) {
             g_outputs[i].sourceA = -1;
             g_outputs[i].weightA = 0;
+            g_outputs[i].offsetA = 0;
         }
         if (g_outputs[i].sourceB == index) {
             g_outputs[i].sourceB = -1;
             g_outputs[i].weightB = 0;
+            g_outputs[i].offsetB = 0;
         }
         if (g_outputs[i].sourceC == index) {
             g_outputs[i].sourceC = -1;
             g_outputs[i].weightC = 0;
+            g_outputs[i].offsetC = 0;
         }
     }
     g_modelDirty = true;
@@ -568,10 +771,13 @@ void handleApiOutputAdd() {
     OutputChannelConfig draft;
     draft.used = true;
     parseOutputFromRequest(&draft, index);
+    OutputChannelConfig previous = g_outputs[index];
     g_outputs[index] = draft;
     String error;
-    if (!rcctl::setupOutputHardware(index, &error)) {
-        g_outputs[index].used = false;
+    if (!rcctl::rebuildOutputHardware(&error)) {
+        g_outputs[index] = previous;
+        String restoreError;
+        rcctl::rebuildOutputHardware(&restoreError);
         sendJson(false, error);
         return;
     }
@@ -586,16 +792,31 @@ void handleApiOutputUpdate() {
         return;
     }
     OutputChannelConfig backup = g_outputs[index];
-    rcctl::releaseOutputHardware(index);
     OutputChannelConfig draft = backup;
     parseOutputFromRequest(&draft, index);
     draft.used = true;
+    const bool allowRewire = parseBoolArg("allow_rewire", false);
+    if (!allowRewire) {
+        // Protect against accidental remapping when user only tweaks simple fields (e.g. reverse).
+        draft.type = backup.type;
+        draft.pin = backup.pin;
+        draft.sourceA = backup.sourceA;
+        draft.sourceB = backup.sourceB;
+        draft.sourceC = backup.sourceC;
+        draft.mixMode = backup.mixMode;
+        draft.weightA = backup.weightA;
+        draft.weightB = backup.weightB;
+        draft.weightC = backup.weightC;
+        draft.offsetA = backup.offsetA;
+        draft.offsetB = backup.offsetB;
+        draft.offsetC = backup.offsetC;
+    }
     g_outputs[index] = draft;
     String error;
-    if (!rcctl::setupOutputHardware(index, &error)) {
+    if (!rcctl::rebuildOutputHardware(&error)) {
         g_outputs[index] = backup;
         String restoreError;
-        rcctl::setupOutputHardware(index, &restoreError);
+        rcctl::rebuildOutputHardware(&restoreError);
         sendJson(false, error);
         return;
     }
@@ -609,8 +830,16 @@ void handleApiOutputDelete() {
         sendJson(false, "Invalid output");
         return;
     }
-    rcctl::releaseOutputHardware(index);
+    OutputChannelConfig backup = g_outputs[index];
     g_outputs[index] = OutputChannelConfig();
+    String error;
+    if (!rcctl::rebuildOutputHardware(&error)) {
+        g_outputs[index] = backup;
+        String restoreError;
+        rcctl::rebuildOutputHardware(&restoreError);
+        sendJson(false, error);
+        return;
+    }
     g_modelDirty = true;
     sendJson(true, "Output deleted");
 }
@@ -993,6 +1222,11 @@ void loop() {
     }
 
     const uint32_t now = millis();
+    if (now - g_lastIoTraceMs > kIoTraceMs) {
+        g_lastIoTraceMs = now;
+        emitIoTrace(g_gamepad);
+    }
+
     if (now - g_lastUiLogMs > kUiRefreshMs) {
         g_lastUiLogMs = now;
         int active = 0;

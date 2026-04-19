@@ -172,6 +172,18 @@ bool loadUserPreset(const String& rawName, PersistedConfig* out, String* errorOu
         }
         return false;
     }
+    if (cfg.magic != kConfigMagic) {
+        if (errorOut) {
+            *errorOut = "Preset corrompu (magic invalide)";
+        }
+        return false;
+    }
+    if (cfg.version != kConfigVersion) {
+        if (errorOut) {
+            *errorOut = "Preset obsolete (format change apres mise a jour)";
+        }
+        return false;
+    }
     *out = cfg;
     return true;
 }
@@ -197,19 +209,34 @@ bool deleteUserPreset(const String& rawName, String* errorOut) {
         return false;
     }
 
-    for (int i = slot; i < static_cast<int>(dir.count) - 1; ++i) {
+    // Rebuild directory/blob slots by copying only valid presets, skipping:
+    // - target preset to delete
+    // - corrupted blobs (best effort cleanup in dev mode)
+    PresetDirectory newDir = {};
+    newDir.magic = kConfigMagic;
+    newDir.version = kPresetDirectoryVersion;
+    newDir.count = 0;
+
+    const int oldCount = static_cast<int>(dir.count);
+    for (int i = 0; i < oldCount; ++i) {
+        if (i == slot) {
+            continue;
+        }
+
         PersistedConfig cfg = {};
         size_t len = sizeof(cfg);
-        String srcKey = presetBlobKey(i + 1);
+        String srcKey = presetBlobKey(i);
         err = nvs_get_blob(handle, srcKey.c_str(), &cfg, &len);
         if (err != ESP_OK || len != sizeof(cfg)) {
-            nvs_close(handle);
-            if (errorOut) {
-                *errorOut = "Preset corrompu";
-            }
-            return false;
+            // Corrupted slot: skip it.
+            continue;
         }
-        String dstKey = presetBlobKey(i);
+
+        const int dst = static_cast<int>(newDir.count);
+        if (dst >= kMaxUserPresets) {
+            break;
+        }
+        String dstKey = presetBlobKey(dst);
         err = nvs_set_blob(handle, dstKey.c_str(), &cfg, sizeof(cfg));
         if (err != ESP_OK) {
             nvs_close(handle);
@@ -218,19 +245,19 @@ bool deleteUserPreset(const String& rawName, String* errorOut) {
             }
             return false;
         }
-        strncpy(dir.names[i], dir.names[i + 1], sizeof(dir.names[i]) - 1);
-        dir.names[i][sizeof(dir.names[i]) - 1] = '\0';
+
+        strncpy(newDir.names[dst], dir.names[i], sizeof(newDir.names[dst]) - 1);
+        newDir.names[dst][sizeof(newDir.names[dst]) - 1] = '\0';
+        newDir.count++;
     }
 
-    if (dir.count > 0) {
-        const int last = static_cast<int>(dir.count) - 1;
-        String lastKey = presetBlobKey(last);
-        nvs_erase_key(handle, lastKey.c_str());
-        memset(dir.names[last], 0, sizeof(dir.names[last]));
-        dir.count--;
+    // Erase leftover old blob slots.
+    for (int i = static_cast<int>(newDir.count); i < oldCount; ++i) {
+        String key = presetBlobKey(i);
+        nvs_erase_key(handle, key.c_str());
     }
 
-    err = nvs_set_blob(handle, "preset_dir", &dir, sizeof(dir));
+    err = nvs_set_blob(handle, "preset_dir", &newDir, sizeof(newDir));
     if (err == ESP_OK) {
         err = nvs_commit(handle);
     }
@@ -252,7 +279,7 @@ void buildBuiltinPresetRcCar(PersistedConfig* cfg) {
     cfg->magic = kConfigMagic;
     cfg->version = kConfigVersion;
     cfg->virtual_inputs[0].used = 1;
-    cfg->virtual_inputs[0].input = static_cast<uint8_t>(InputId::AxisX);
+    cfg->virtual_inputs[0].input = static_cast<uint8_t>(InputId::AxisRX);
     cfg->virtual_inputs[0].deadzone = 10;
     cfg->virtual_inputs[0].expo = 20;
     strncpy(cfg->virtual_inputs[0].name, "Steering", sizeof(cfg->virtual_inputs[0].name) - 1);
@@ -264,15 +291,24 @@ void buildBuiltinPresetRcCar(PersistedConfig* cfg) {
     cfg->virtual_inputs[1].expo = 25;
     strncpy(cfg->virtual_inputs[1].name, "Throttle", sizeof(cfg->virtual_inputs[1].name) - 1);
 
+    cfg->virtual_inputs[2].used = 1;
+    cfg->virtual_inputs[2].input = static_cast<uint8_t>(InputId::ButtonA);
+    cfg->virtual_inputs[2].reserved = 34;  // input_type=Toggle3Pos(2), range=Unipolar(0), rumble=1
+    cfg->virtual_inputs[2].deadzone = 0;
+    cfg->virtual_inputs[2].expo = 0;
+    strncpy(cfg->virtual_inputs[2].name, "Steering DR", sizeof(cfg->virtual_inputs[2].name) - 1);
+
     cfg->channels[0].used = 1;
     cfg->channels[0].type = static_cast<uint8_t>(ChannelType::Pwm);
     cfg->channels[0].pin = 13;
     cfg->channels[0].source_a = 0;
     cfg->channels[0].source_b = -1;
     cfg->channels[0].source_c = -1;
+    cfg->channels[0].mix_mode = 1;  // Multiply
     cfg->channels[0].weight_a = 100;
     cfg->channels[0].weight_b = 0;
     cfg->channels[0].weight_c = 0;
+    cfg->channels[0].offset_b = 0;
     cfg->channels[0].threshold = 50;
     strncpy(cfg->channels[0].name, "Steering", sizeof(cfg->channels[0].name) - 1);
 
@@ -281,11 +317,13 @@ void buildBuiltinPresetRcCar(PersistedConfig* cfg) {
     cfg->channels[1].pin = 12;
     cfg->channels[1].inverted = 1;
     cfg->channels[1].source_a = 1;
-    cfg->channels[1].source_b = -1;
+    cfg->channels[1].source_b = 2;
     cfg->channels[1].source_c = -1;
+    cfg->channels[1].mix_mode = 1;  // Multiply
     cfg->channels[1].weight_a = 100;
-    cfg->channels[1].weight_b = 0;
+    cfg->channels[1].weight_b = -75;
     cfg->channels[1].weight_c = 0;
+    cfg->channels[1].offset_b = 100;
     cfg->channels[1].threshold = 50;
     strncpy(cfg->channels[1].name, "Throttle", sizeof(cfg->channels[1].name) - 1);
 }
