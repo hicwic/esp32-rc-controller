@@ -102,12 +102,12 @@ String buildWebUiPage(const String& inputsJson) {
       <div class="row" style="justify-content:space-between"><strong id="virtualTitle">Add Input</strong><button class="btn alt" id="virtualCloseBtn" type="button">Close</button></div>
       <input id="virtualIndex" type="hidden">
       <div class="grid">
-        <div><label class="lbl">Name</label><input id="virtualName"></div>
+        <div><label class="lbl">Name / Input type</label><div class="inline"><input id="virtualName" class="grow"><select id="virtualInputType" class="grow"><option value="0">Direct</option><option value="1">2-position</option><option value="2">3-position</option></select></div></div>
         <div><label class="lbl">Deadzone / Expo (%)</label><div class="inline"><input id="virtualDeadzone" type="number" min="0" max="95" class="grow"><input id="virtualExpo" type="number" min="0" max="100" class="grow"></div></div>
         <div><label class="lbl">Primary input</label><div class="inline"><select id="virtualInput" class="grow"></select><button class="btn alt mini" id="learnPrimaryBtn" type="button">Learn</button></div></div>
         <div><label class="lbl">Secondary input (optional)</label><div class="inline"><select id="virtualSecondary" class="grow"></select><button class="btn alt mini" id="learnSecondaryBtn" type="button">Learn</button></div></div>
         <div><label class="lbl">Modifier input (optional)</label><div class="inline"><select id="virtualModifier" class="grow"></select><button class="btn alt mini" id="learnModifierBtn" type="button">Learn</button></div></div>
-        <div><label class="lbl">Modifier function</label><select id="virtualModifierFn"><option value="0">None</option><option value="1">Reverse</option></select></div>
+        <div><label class="lbl">Modifier function</label><select id="virtualModifierFn"><option value="0">None</option><option value="1">Reverse</option><option value="2">Center</option></select></div>
       </div>
       <div class="row"><button class="btn ok" id="virtualSaveBtn" type="button">Save</button><span class="hint" id="virtualLearnStatus"></span></div>
     </div>
@@ -187,6 +187,7 @@ String buildWebUiPage(const String& inputsJson) {
       virtualDeadzone:document.getElementById('virtualDeadzone'),
       virtualExpo:document.getElementById('virtualExpo'),
       virtualInput:document.getElementById('virtualInput'),
+      virtualInputType:document.getElementById('virtualInputType'),
       virtualSecondary:document.getElementById('virtualSecondary'),
       virtualModifier:document.getElementById('virtualModifier'),
       virtualModifierFn:document.getElementById('virtualModifierFn'),
@@ -273,6 +274,18 @@ String buildWebUiPage(const String& inputsJson) {
       const v = (state.virtual_inputs||[]).find(function(x){ return Number(x.index)===Number(idx); });
       return v ? ("IN"+v.index+" "+v.name) : ("IN"+idx);
     }
+    function inputFunctionLabel(fn){
+      const v = Number(fn)||0;
+      if (v===1) return "Reverse";
+      if (v===2) return "Center";
+      return "None";
+    }
+    function inputTypeLabel(t){
+      const v = Number(t)||0;
+      if (v===1) return "2-position";
+      if (v===2) return "3-position";
+      return "Direct";
+    }
     function signedBar(v){
       const n=Number(v)||0; const width=Math.round(Math.abs(n)*50); const left=n>=0?50:(50-width);
       return "<div class='bar'><div class='bar-mid'></div><div class='bar-val' style='left:"+left+"%;width:"+width+"%'></div></div>";
@@ -301,7 +314,12 @@ String buildWebUiPage(const String& inputsJson) {
     function renderVirtualCards(){
       ui.virtualCards.innerHTML=(state.virtual_inputs||[]).map(function(v){
         const sec=Number(v.input_secondary)>0?(" / "+inputLabel(v.input_secondary)):"";
-        const mod=Number(v.input_modifier)>0?(" | mod "+inputLabel(v.input_modifier)+(Number(v.modifier_function)===1?" (reverse)":"")):"";
+        const fn = Number(v.modifier_function)||0;
+        const type = Number(v.input_type)||0;
+        const modInput = Number(v.input_modifier)>0?(" | mod "+inputLabel(v.input_modifier)):"";
+        const fnTxt = fn>0?(" | fn "+inputFunctionLabel(fn)):"";
+        const typeTxt = " | type " + inputTypeLabel(type);
+        const mod = typeTxt + modInput + fnTxt;
         return "<div class='card "+(v.active?"active":"")+"' data-vidx='"+v.index+"'>"
           +"<div class='title'>IN"+v.index+" - "+esc(v.name)+"</div>"
           +"<div class='meta'><span>"+esc(inputLabel(v.input))+esc(sec)+esc(mod)+"</span><span>DZ "+v.deadzone+"%</span><span>Expo "+v.expo+"%</span></div>"
@@ -331,6 +349,7 @@ String buildWebUiPage(const String& inputsJson) {
       ui.virtualIndex.value=mode==="add"?"":String(v.index);
       ui.virtualName.value=mode==="add"?"Input":v.name;
       fillInputSelect(ui.virtualInput, mode==="add"?1:v.input, false);
+      ui.virtualInputType.value=mode==="add"?"0":String(v.input_type||0);
       fillInputSelect(ui.virtualSecondary, mode==="add"?0:v.input_secondary, true);
       fillInputSelect(ui.virtualModifier, mode==="add"?0:v.input_modifier, true);
       ui.virtualModifierFn.value=mode==="add"?"0":String(v.modifier_function||0);
@@ -468,7 +487,7 @@ String buildWebUiPage(const String& inputsJson) {
     ui.learnModifierBtn.addEventListener("click", function(){ learnInto(ui.virtualModifier); });
     ui.virtualSaveBtn.addEventListener("click", async function(){
       const isAdd=!ui.virtualIndex.value;
-      const payload={name:ui.virtualName.value,input:ui.virtualInput.value,input_secondary:ui.virtualSecondary.value,input_modifier:ui.virtualModifier.value,modifier_function:ui.virtualModifierFn.value,deadzone:ui.virtualDeadzone.value,expo:ui.virtualExpo.value};
+      const payload={name:ui.virtualName.value,input:ui.virtualInput.value,input_type:ui.virtualInputType.value,input_secondary:ui.virtualSecondary.value,input_modifier:ui.virtualModifier.value,modifier_function:ui.virtualModifierFn.value,deadzone:ui.virtualDeadzone.value,expo:ui.virtualExpo.value};
       if(!isAdd) payload.index=ui.virtualIndex.value;
       const r=await post(isAdd?"/api/virtual_add":"/api/virtual_update",payload);
       setMsg(r.message||(r.ok?"Saved":"Error")); if(r.ok) closeVirtualModal(); refresh();

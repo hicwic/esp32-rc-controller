@@ -17,6 +17,11 @@ float g_virtualRuntime[kMaxVirtualInputs] = {0.0f};
 float g_outputRuntime[kMaxOutputChannels] = {0.0f};
 Servo g_pwmOutputs[kMaxOutputChannels];
 bool g_pwmAttached[kMaxOutputChannels] = {false};
+int8_t g_togglePosition[kMaxVirtualInputs] = {0};
+bool g_togglePrimaryPressedPrev[kMaxVirtualInputs] = {false};
+bool g_toggleSecondaryPressedPrev[kMaxVirtualInputs] = {false};
+bool g_toggleModifierPressedPrev[kMaxVirtualInputs] = {false};
+int8_t g_toggle3Direction[kMaxVirtualInputs] = {1};
 
 int clampPwmUs(int us) {
     return constrain(us, kPwmMinUs, kPwmMaxUs);
@@ -55,6 +60,54 @@ float sourceValueByIndex(int8_t idx) {
         return 0.0f;
     }
     return g_virtualRuntime[idx];
+}
+
+float evaluateToggleVirtualInput(int index, const VirtualInputConfig& in, ControllerPtr ctl, int positions) {
+    if (index < 0 || index >= kMaxVirtualInputs || !ctl || !ctl->isConnected()) {
+        return 0.0f;
+    }
+    const bool primaryPressed = isInputActive(in.primary, ctl);
+    const bool primaryRise = primaryPressed && !g_togglePrimaryPressedPrev[index];
+    g_togglePrimaryPressedPrev[index] = primaryPressed;
+
+    const bool secondaryPressed = (in.secondary != InputId::None) ? isInputActive(in.secondary, ctl) : false;
+    const bool secondaryRise = secondaryPressed && !g_toggleSecondaryPressedPrev[index];
+    g_toggleSecondaryPressedPrev[index] = secondaryPressed;
+
+    const bool modifierPressed = (in.modifier != InputId::None) ? isInputActive(in.modifier, ctl) : false;
+    const bool modifierRise = modifierPressed && !g_toggleModifierPressedPrev[index];
+    g_toggleModifierPressedPrev[index] = modifierPressed;
+
+    if (modifierRise && positions == 3 && in.modifierFunction == ModifierFunction::Center) {
+        g_togglePosition[index] = 1;  // center
+        g_toggle3Direction[index] = 1;
+    } else if (positions == 2 && primaryRise) {
+        g_togglePosition[index] = (g_togglePosition[index] == 0) ? 1 : 0;
+    } else if (positions == 3 && in.secondary != InputId::None) {
+        // Direct 3-position control with dedicated buttons.
+        if (primaryRise && !secondaryRise) {
+            g_togglePosition[index] = 2;  // +1
+        } else if (secondaryRise && !primaryRise) {
+            g_togglePosition[index] = 0;  // -1
+        }
+    } else if (primaryRise) {
+        // Fallback cycle mode for single-button usage.
+        if (positions == 2) {
+            g_togglePosition[index] = (g_togglePosition[index] == 0) ? 1 : 0;
+        } else {  // 3-position cycle: -1 -> 0 -> +1 -> 0 -> -1 ...
+            if (g_togglePosition[index] <= 0) {
+                g_toggle3Direction[index] = 1;
+            } else if (g_togglePosition[index] >= 2) {
+                g_toggle3Direction[index] = -1;
+            }
+            g_togglePosition[index] = static_cast<int8_t>(constrain(g_togglePosition[index] + g_toggle3Direction[index], 0, 2));
+        }
+    }
+
+    if (positions == 2) {
+        return g_togglePosition[index] ? 1.0f : -1.0f;
+    }
+    return static_cast<float>(g_togglePosition[index] - 1);  // 0->-1, 1->0, 2->+1
 }
 
 int pwmFromOutput(const OutputChannelConfig& out) {
@@ -159,6 +212,19 @@ float evaluateOutputSignal(const OutputChannelConfig& out) {
 
 void evaluateVirtualRuntime(ControllerPtr ctl) {
     for (int i = 0; i < kMaxVirtualInputs; ++i) {
+        const auto type = g_virtualInputs[i].inputType;
+        if (type == InputType::Toggle2Pos) {
+            g_virtualRuntime[i] = evaluateToggleVirtualInput(i, g_virtualInputs[i], ctl, 2);
+            continue;
+        }
+        if (type == InputType::Toggle3Pos) {
+            g_virtualRuntime[i] = evaluateToggleVirtualInput(i, g_virtualInputs[i], ctl, 3);
+            continue;
+        }
+        g_togglePrimaryPressedPrev[i] = false;
+        g_toggleSecondaryPressedPrev[i] = false;
+        g_toggleModifierPressedPrev[i] = false;
+        g_toggle3Direction[i] = 1;
         g_virtualRuntime[i] = evaluateVirtualInput(g_virtualInputs[i], ctl);
     }
 }
@@ -254,6 +320,7 @@ bool exportCurrentConfig(PersistedConfig* out) {
         cfg.virtual_inputs[i].input_secondary = static_cast<uint8_t>(g_virtualInputs[i].secondary);
         cfg.virtual_inputs[i].input_modifier = static_cast<uint8_t>(g_virtualInputs[i].modifier);
         cfg.virtual_inputs[i].modifier_function = static_cast<uint8_t>(g_virtualInputs[i].modifierFunction);
+        cfg.virtual_inputs[i].reserved = static_cast<uint8_t>(g_virtualInputs[i].inputType);
         cfg.virtual_inputs[i].deadzone = static_cast<uint8_t>(constrain(g_virtualInputs[i].deadzonePercent, 0, 95));
         cfg.virtual_inputs[i].expo = static_cast<uint8_t>(constrain(g_virtualInputs[i].expoPercent, 0, 100));
         memcpy(cfg.virtual_inputs[i].name, g_virtualInputs[i].name, sizeof(cfg.virtual_inputs[i].name));
@@ -311,9 +378,40 @@ bool applyPersistedConfig(const PersistedConfig& cfg, String* errorOut) {
         g_virtualInputs[i].primary = static_cast<InputId>(pv.input);
         g_virtualInputs[i].secondary = static_cast<InputId>(pv.input_secondary);
         g_virtualInputs[i].modifier = static_cast<InputId>(pv.input_modifier);
-        g_virtualInputs[i].modifierFunction = (pv.modifier_function == static_cast<uint8_t>(ModifierFunction::Reverse))
-                                                  ? ModifierFunction::Reverse
-                                                  : ModifierFunction::None;
+        switch (pv.reserved) {
+            case static_cast<uint8_t>(InputType::Toggle2Pos):
+                g_virtualInputs[i].inputType = InputType::Toggle2Pos;
+                break;
+            case static_cast<uint8_t>(InputType::Toggle3Pos):
+                g_virtualInputs[i].inputType = InputType::Toggle3Pos;
+                break;
+            default:
+                g_virtualInputs[i].inputType = InputType::Direct;
+                break;
+        }
+        switch (pv.modifier_function) {
+            case static_cast<uint8_t>(ModifierFunction::Reverse):
+                g_virtualInputs[i].modifierFunction = ModifierFunction::Reverse;
+                break;
+            case static_cast<uint8_t>(ModifierFunction::Center):
+                g_virtualInputs[i].modifierFunction = ModifierFunction::Center;
+                break;
+            default:
+                g_virtualInputs[i].modifierFunction = ModifierFunction::None;
+                break;
+        }
+        g_togglePrimaryPressedPrev[i] = false;
+        g_toggleSecondaryPressedPrev[i] = false;
+        g_toggleModifierPressedPrev[i] = false;
+        if (g_virtualInputs[i].inputType == InputType::Toggle2Pos) {
+            g_togglePosition[i] = 0;
+        } else if (g_virtualInputs[i].inputType == InputType::Toggle3Pos) {
+            g_togglePosition[i] = 1;
+            g_toggle3Direction[i] = 1;
+        } else {
+            g_togglePosition[i] = 0;
+            g_toggle3Direction[i] = 1;
+        }
         g_virtualInputs[i].deadzonePercent = constrain(pv.deadzone, 0, 95);
         g_virtualInputs[i].expoPercent = constrain(pv.expo, 0, 100);
         memcpy(g_virtualInputs[i].name, pv.name, sizeof(g_virtualInputs[i].name));
@@ -405,4 +503,3 @@ String outputTypeLabel(ChannelType type) {
 }
 
 }  // namespace rcctl
-

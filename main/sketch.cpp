@@ -331,9 +331,31 @@ void redirectCaptivePortal() {
 void parseVirtualFromRequest(VirtualInputConfig* out, int existingIndex) {
     out->primary = static_cast<InputId>(parseIntArg("input", static_cast<int>(InputId::AxisX)));
     out->secondary = static_cast<InputId>(parseIntArg("input_secondary", static_cast<int>(InputId::None)));
+    const int type = parseIntArg("input_type", 0);
+    switch (type) {
+        case 1:
+            out->inputType = rcctl::InputType::Toggle2Pos;
+            break;
+        case 2:
+            out->inputType = rcctl::InputType::Toggle3Pos;
+            break;
+        default:
+            out->inputType = rcctl::InputType::Direct;
+            break;
+    }
     out->modifier = static_cast<InputId>(parseIntArg("input_modifier", static_cast<int>(InputId::None)));
-    out->modifierFunction =
-        parseIntArg("modifier_function", 0) == 1 ? rcctl::ModifierFunction::Reverse : rcctl::ModifierFunction::None;
+    const int fn = parseIntArg("modifier_function", 0);
+    switch (fn) {
+        case 1:
+            out->modifierFunction = rcctl::ModifierFunction::Reverse;
+            break;
+        case 2:
+            out->modifierFunction = rcctl::ModifierFunction::Center;
+            break;
+        default:
+            out->modifierFunction = rcctl::ModifierFunction::None;
+            break;
+    }
     out->deadzonePercent = constrain(parseIntArg("deadzone", 10), 0, 95);
     out->expoPercent = constrain(parseIntArg("expo", 0), 0, 100);
 
@@ -407,6 +429,7 @@ void handleApiState() {
         json += ",\"name\":\"" + String(g_virtualInputs[i].name) + "\"";
         json += ",\"input\":" + String(static_cast<int>(g_virtualInputs[i].primary));
         json += ",\"input_secondary\":" + String(static_cast<int>(g_virtualInputs[i].secondary));
+        json += ",\"input_type\":" + String(static_cast<int>(g_virtualInputs[i].inputType));
         json += ",\"input_modifier\":" + String(static_cast<int>(g_virtualInputs[i].modifier));
         json += ",\"modifier_function\":" + String(static_cast<int>(g_virtualInputs[i].modifierFunction));
         json += ",\"deadzone\":" + String(g_virtualInputs[i].deadzonePercent);

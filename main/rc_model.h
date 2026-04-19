@@ -9,15 +9,23 @@
 
 namespace rcctl {
 
+enum class InputType : uint8_t {
+    Direct = 0,
+    Toggle2Pos = 1,
+    Toggle3Pos = 2,
+};
+
 enum class ModifierFunction : uint8_t {
     None = 0,
     Reverse = 1,
+    Center = 2,
 };
 
 struct VirtualInputConfig {
     bool used = false;
     InputId primary = InputId::None;
     InputId secondary = InputId::None;
+    InputType inputType = InputType::Direct;
     InputId modifier = InputId::None;
     ModifierFunction modifierFunction = ModifierFunction::None;
     int deadzonePercent = 10;
@@ -67,4 +75,3 @@ bool saveRuntimeConfigToNvs();
 String outputTypeLabel(ChannelType type);
 
 }  // namespace rcctl
-
