@@ -106,6 +106,7 @@ InputId detectDominantInput(ControllerPtr ctl) {
         return InputId::None;
     }
 
+    // Ordered by interaction intent: buttons first, then analog controls.
     const struct {
         InputId id;
         float threshold;
@@ -132,4 +133,3 @@ InputId detectDominantInput(ControllerPtr ctl) {
     }
     return best;
 }
-

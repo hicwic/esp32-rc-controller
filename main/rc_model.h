@@ -64,27 +64,32 @@ struct OutputChannelConfig {
     char name[24] = "";
 };
 
+// Shared runtime/config arrays used by web handlers and control loop.
 VirtualInputConfig* virtualInputs();
 OutputChannelConfig* outputs();
 float* virtualRuntimeValues();
 float* outputRuntimeValues();
 bool* pwmAttached();
 
+// Allocation helpers for UI actions.
 int firstFreeVirtualIndex();
 int firstFreeOutputIndex();
 bool outputPinAlreadyUsed(uint8_t pin, int ignoreIndex);
 
+// Signal evaluation pipeline.
 float evaluateVirtualInput(const VirtualInputConfig& in, ControllerPtr ctl);
 float evaluateOutputSignal(const OutputChannelConfig& out);
 void evaluateVirtualRuntime(ControllerPtr ctl);
 void processGamepadToOutputs(ControllerPtr ctl);
 
+// Hardware lifecycle for channel outputs.
 void releaseOutputHardware(int index);
 bool setupOutputHardware(int index, String* error);
 bool rebuildOutputHardware(String* error);
 void writeFailsafeForOutput(int index);
 void applyFailsafeAllOutputs();
 
+// Serialization and config-apply helpers.
 bool exportCurrentConfig(PersistedConfig* out);
 bool applyPersistedConfig(const PersistedConfig& cfg, String* errorOut = nullptr);
 bool saveRuntimeConfigToNvs();

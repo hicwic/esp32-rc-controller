@@ -22,6 +22,7 @@ int findPresetSlotByName(const PresetDirectory& dir, const String& name) {
 }  // namespace
 
 String sanitizePresetName(const String& in) {
+    // Keep names shell/file/NVS friendly and bounded to fixed storage slots.
     String s = in;
     s.trim();
     String out;
@@ -443,6 +444,7 @@ void buildBuiltinPresetSkidSteer(PersistedConfig* cfg) {
 }
 
 bool loadAnyPreset(const String& name, PersistedConfig* out, String* errorOut) {
+    // Keep backward compatibility with older default preset naming.
     if (name == "rc_car_controller") {
         buildBuiltinPresetRcCar(out);
         return true;

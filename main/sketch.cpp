@@ -11,8 +11,12 @@
 #include <esp_wifi.h>
 
 #include "control_inputs.h"
+#include "preset_service.h"
 #include "preset_store.h"
 #include "rc_model.h"
+#include "runtime_loop.h"
+#include "state_service.h"
+#include "web_routes.h"
 #include "web_ui.h"
 
 #include <math.h>
@@ -415,85 +419,12 @@ bool saveApPassword(const String& raw) {
 }
 
 void sendJson(bool ok, const String& message = "") {
-    String json = "{\"ok\":";
-    json += ok ? "true" : "false";
-    if (message.length()) {
-        json += ",\"message\":\"";
-        for (size_t i = 0; i < message.length(); ++i) {
-            const char c = message[i];
-            if (c == '"' || c == '\\') {
-                json += '\\';
-            }
-            if (c == '\n') {
-                json += "\\n";
-            } else {
-                json += c;
-            }
-        }
-        json += "\"";
-    }
-    json += "}";
-    g_server.send(ok ? 200 : 400, "application/json", json);
-}
-
-bool saveUserPreset(const String& rawName, const PersistedConfig* sourceCfg, String* errorOut = nullptr) {
-    return rcctl::saveUserPresetBlob(rawName, sourceCfg, errorOut);
-}
-
-bool saveUserPreset(const String& rawName, String* errorOut = nullptr) {
-    PersistedConfig cfg = {};
-    rcctl::exportCurrentConfig(&cfg);
-    return rcctl::saveUserPresetBlob(rawName, &cfg, errorOut);
-}
-
-bool presetNameExists(const String& rawName) {
-    rcctl::PresetDirectory dir = {};
-    rcctl::loadPresetDirectory(&dir);
-    const String target = rcctl::sanitizePresetName(rawName);
-    for (int i = 0; i < static_cast<int>(dir.count); ++i) {
-        if (target.equalsIgnoreCase(String(dir.names[i]))) {
-            return true;
-        }
-    }
-    return false;
-}
-
-String nextAvailableCustomModelName(const String& baseName) {
-    const String base = rcctl::sanitizePresetName(baseName);
-    if (!presetNameExists(base)) {
-        return base;
-    }
-    for (int i = 2; i <= 99; ++i) {
-        String candidate = base + "_" + String(i);
-        if (!presetNameExists(candidate)) {
-            return candidate;
-        }
-    }
-    return base + "_" + String(millis() % 1000);
+    // Delegate all envelope serialization to a single JSON utility path.
+    rcctl::sendJson(g_server, ok, message);
 }
 
 String buildInputsJson() {
-    String inputsJson = "[";
-    bool firstInput = true;
-    for (size_t i = 0; i < kInputCount; ++i) {
-        if (kInputs[i].id == InputId::ButtonL2 || kInputs[i].id == InputId::ButtonR2) {
-            continue;
-        }
-        if (!firstInput) {
-            inputsJson += ",";
-        }
-        firstInput = false;
-        String label = String(kInputs[i].label);
-        label.replace("\\", "\\\\");
-        label.replace("\"", "\\\"");
-        inputsJson += "{\"id\":";
-        inputsJson += String(static_cast<int>(kInputs[i].id));
-        inputsJson += ",\"label\":\"";
-        inputsJson += label;
-        inputsJson += "\"}";
-    }
-    inputsJson += "]";
-    return inputsJson;
+    return rcctl::buildInputsJson();
 }
 
 void handleRoot() {
@@ -606,125 +537,53 @@ void parseOutputFromRequest(OutputChannelConfig* out, int existingIndex) {
 }
 
 void handleApiState() {
-    String json = "{";
-    String apSsidJson = g_apSsid;
-    apSsidJson.replace("\\", "\\\\");
-    apSsidJson.replace("\"", "\\\"");
-    String apPassJson = g_apPassword;
-    apPassJson.replace("\\", "\\\\");
-    apPassJson.replace("\"", "\\\"");
-
-    json += "\"ap_ip\":\"" + WiFi.softAPIP().toString() + "\",";
-    json += "\"ap_ssid\":\"" + apSsidJson + "\",";
-    json += "\"ap_password\":\"" + apPassJson + "\",";
-    json += "\"gamepad\":";
-    json += (g_gamepad && g_gamepad->isConnected()) ? "true" : "false";
-    json += ",\"bt_scan\":";
-    json += g_btScanActive ? "true" : "false";
-    json += ",\"pairing\":";
-    json += g_pairingScanEnabled ? "true" : "false";
-    json += ",\"current_model\":\"";
-    json += g_currentModelName;
-    json += "\",\"boot_model\":\"";
-    json += g_bootModelName;
-    json += "\",\"model_dirty\":";
-    json += g_modelDirty ? "true" : "false";
-
-    json += ",\"virtual_inputs\":[";
-    bool first = true;
-    for (int i = 0; i < kMaxVirtualInputs; ++i) {
-        if (!g_virtualInputs[i].used) {
-            continue;
-        }
-        if (!first) {
-            json += ",";
-        }
-        first = false;
-        json += "{";
-        json += "\"index\":" + String(i);
-        json += ",\"name\":\"" + String(g_virtualInputs[i].name) + "\"";
-        json += ",\"input\":" + String(static_cast<int>(g_virtualInputs[i].primary));
-        json += ",\"input_secondary\":" + String(static_cast<int>(g_virtualInputs[i].secondary));
-        json += ",\"input_type\":" + String(static_cast<int>(g_virtualInputs[i].inputType));
-        json += ",\"range_mode\":" + String(static_cast<int>(g_virtualInputs[i].toggleRange));
-        json += ",\"rumble\":";
-        json += g_virtualInputs[i].rumbleEnabled ? "true" : "false";
-        json += ",\"input_modifier\":" + String(static_cast<int>(g_virtualInputs[i].modifier));
-        json += ",\"modifier_function\":" + String(static_cast<int>(g_virtualInputs[i].modifierFunction));
-        json += ",\"deadzone\":" + String(g_virtualInputs[i].deadzonePercent);
-        json += ",\"expo\":" + String(g_virtualInputs[i].expoPercent);
-        json += ",\"signed_activity\":" + String(g_virtualRuntime[i], 3);
-        json += ",\"activity\":" + String(fabsf(g_virtualRuntime[i]), 3);
-        json += ",\"active\":";
-        json += (fabsf(g_virtualRuntime[i]) > 0.15f) ? "true" : "false";
-        json += "}";
-    }
-    json += "]";
-
-    json += ",\"outputs\":[";
-    first = true;
-    for (int i = 0; i < kMaxOutputChannels; ++i) {
-        if (!g_outputs[i].used) {
-            continue;
-        }
-        if (!first) {
-            json += ",";
-        }
-        first = false;
-        json += "{";
-        json += "\"index\":" + String(i);
-        json += ",\"name\":\"" + String(g_outputs[i].name) + "\"";
-        json += ",\"type\":" + String(static_cast<int>(g_outputs[i].type));
-        json += ",\"type_label\":\"" + rcctl::outputTypeLabel(g_outputs[i].type) + "\"";
-        json += ",\"pin\":" + String(g_outputs[i].pin);
-        json += ",\"source_a\":" + String(g_outputs[i].sourceA);
-        json += ",\"source_b\":" + String(g_outputs[i].sourceB);
-        json += ",\"source_c\":" + String(g_outputs[i].sourceC);
-        json += ",\"mix_mode\":" + String(static_cast<int>(g_outputs[i].mixMode));
-        json += ",\"mix_mode_label\":\"" + rcctl::mixModeLabel(g_outputs[i].mixMode) + "\"";
-        json += ",\"weight_a\":" + String(g_outputs[i].weightA);
-        json += ",\"weight_b\":" + String(g_outputs[i].weightB);
-        json += ",\"weight_c\":" + String(g_outputs[i].weightC);
-        json += ",\"offset_a\":" + String(g_outputs[i].offsetA);
-        json += ",\"offset_b\":" + String(g_outputs[i].offsetB);
-        json += ",\"offset_c\":" + String(g_outputs[i].offsetC);
-        json += ",\"threshold\":" + String(g_outputs[i].thresholdPercent);
-        json += ",\"inverted\":";
-        json += g_outputs[i].inverted ? "true" : "false";
-        json += ",\"signed_activity\":" + String(g_outputRuntime[i], 3);
-        json += ",\"activity\":" + String(fabsf(g_outputRuntime[i]), 3);
-        json += ",\"active\":";
-        json += (fabsf(g_outputRuntime[i]) > 0.15f) ? "true" : "false";
-        json += "}";
-    }
-    json += "]";
-
-    json += ",\"pwm_pins\":[";
-    bool firstPin = true;
-    for (int pin = 0; pin <= 48; ++pin) {
-        if (!ESP32PWM::hasPwm(pin)) {
-            continue;
-        }
-        if (!firstPin) {
-            json += ",";
-        }
-        firstPin = false;
-        json += String(pin);
-    }
-    json += "],\"presets\":[\"";
-    json += String(kPresetRcCar);
-    json += "\",\"";
-    json += String(kPresetExcavator);
-    json += "\",\"";
-    json += String(kPresetSkidSteer);
-    json += "\"";
+    // "Static" state endpoint: returns full configuration + metadata for UI rebuild.
     PresetDirectory dir = {};
     rcctl::loadPresetDirectory(&dir);
-    for (int i = 0; i < static_cast<int>(dir.count); ++i) {
-        json += ",\"" + String(dir.names[i]) + "\"";
-    }
-    json += "]}";
-    g_server.send(200, "application/json", json);
+    rcctl::StateSnapshot s = {
+        .apIp = WiFi.softAPIP(),
+        .apSsid = g_apSsid,
+        .apPassword = g_apPassword,
+        .gamepadConnected = (g_gamepad && g_gamepad->isConnected()),
+        .btScanActive = g_btScanActive,
+        .pairingEnabled = g_pairingScanEnabled,
+        .currentModel = g_currentModelName,
+        .bootModel = g_bootModelName,
+        .modelDirty = g_modelDirty,
+        .virtualInputs = g_virtualInputs,
+        .outputs = g_outputs,
+        .virtualRuntime = g_virtualRuntime,
+        .outputRuntime = g_outputRuntime,
+        .presetDir = &dir,
+        .presetBuiltinA = kPresetRcCar,
+        .presetBuiltinB = kPresetExcavator,
+        .presetBuiltinC = kPresetSkidSteer,
+    };
+    g_server.send(200, "application/json", rcctl::buildStateJson(s));
+}
+
+void handleApiActivity() {
+    // "Live" endpoint: lightweight payload polled frequently by the UI.
+    rcctl::StateSnapshot s = {
+        .apIp = IPAddress(0, 0, 0, 0),
+        .apSsid = g_apSsid,
+        .apPassword = "",
+        .gamepadConnected = (g_gamepad && g_gamepad->isConnected()),
+        .btScanActive = g_btScanActive,
+        .pairingEnabled = g_pairingScanEnabled,
+        .currentModel = g_currentModelName,
+        .bootModel = g_bootModelName,
+        .modelDirty = g_modelDirty,
+        .virtualInputs = g_virtualInputs,
+        .outputs = g_outputs,
+        .virtualRuntime = g_virtualRuntime,
+        .outputRuntime = g_outputRuntime,
+        .presetDir = nullptr,
+        .presetBuiltinA = "",
+        .presetBuiltinB = "",
+        .presetBuiltinC = "",
+    };
+    g_server.send(200, "application/json", rcctl::buildActivityJson(s));
 }
 
 void handleApiVirtualAdd() {
@@ -924,7 +783,7 @@ void handleApiModelCreate() {
             return;
         }
     }
-    if (!saveUserPreset(newName, &cfg, &err)) {
+    if (!rcctl::saveUserPresetFromConfig(newName, cfg, &err)) {
         sendJson(false, err);
         return;
     }
@@ -939,7 +798,7 @@ void handleApiModelCreate() {
 
 void handleApiModelSaveCurrent() {
     if (g_currentModelName == kPresetRcCar || g_currentModelName == kPresetExcavator || g_currentModelName == kPresetSkidSteer) {
-        const String suggested = nextAvailableCustomModelName((g_currentModelName == kPresetRcCar) ? String("car_custom")
+        const String suggested = rcctl::nextAvailableCustomModelName((g_currentModelName == kPresetRcCar) ? String("car_custom")
                                                      : ((g_currentModelName == kPresetExcavator) ? String("excavator_custom")
                                                                                                  : String("skid_steer_custom")));
         String json = "{\"ok\":false,\"readonly\":true,\"message\":\"Readonly preset: create a fork to save changes\","
@@ -952,7 +811,7 @@ void handleApiModelSaveCurrent() {
         return;
     }
     String err;
-    if (!saveUserPreset(g_currentModelName, &err)) {
+    if (!rcctl::saveCurrentAsUserPreset(g_currentModelName, &err)) {
         sendJson(false, err);
         return;
     }
@@ -1111,40 +970,37 @@ void setupWebUi() {
         esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G);
     }
 
-    g_server.on("/", HTTP_GET, handleRoot);
-    g_server.on("/generate_204", HTTP_GET, redirectCaptivePortal);
-    g_server.on("/gen_204", HTTP_GET, redirectCaptivePortal);
-    g_server.on("/hotspot-detect.html", HTTP_GET, redirectCaptivePortal);
-    g_server.on("/connecttest.txt", HTTP_GET, redirectCaptivePortal);
-    g_server.on("/ncsi.txt", HTTP_GET, redirectCaptivePortal);
-    g_server.on("/fwlink", HTTP_GET, redirectCaptivePortal);
-
-    g_server.on("/api/state", HTTP_GET, handleApiState);
-    g_server.on("/api/inputs", HTTP_GET, handleApiInputs);
-    g_server.on("/api/virtual_add", HTTP_POST, handleApiVirtualAdd);
-    g_server.on("/api/virtual_update", HTTP_POST, handleApiVirtualUpdate);
-    g_server.on("/api/virtual_delete", HTTP_POST, handleApiVirtualDelete);
-    g_server.on("/api/output_add", HTTP_POST, handleApiOutputAdd);
-    g_server.on("/api/output_update", HTTP_POST, handleApiOutputUpdate);
-    g_server.on("/api/output_delete", HTTP_POST, handleApiOutputDelete);
-    g_server.on("/api/preset_apply", HTTP_POST, handleApiPresetApply);
-    g_server.on("/api/model_set_default", HTTP_POST, handleApiModelSetDefault);
-    g_server.on("/api/model_create", HTTP_POST, handleApiModelCreate);
-    g_server.on("/api/model_save_current", HTTP_POST, handleApiModelSaveCurrent);
-    g_server.on("/api/model_revert", HTTP_POST, handleApiModelRevert);
-    g_server.on("/api/model_delete", HTTP_POST, handleApiModelDelete);
-    g_server.on("/api/ap_config_set", HTTP_POST, handleApiApConfigSet);
-    g_server.on("/api/ap_config_apply_reboot", HTTP_POST, handleApiApConfigApplyReboot);
-    g_server.on("/api/pairing_on", HTTP_POST, handleApiPairingOn);
-    g_server.on("/api/pairing_off", HTTP_POST, handleApiPairingOff);
-    g_server.on("/api/learn_detect", HTTP_POST, handleApiLearnDetect);
-    g_server.onNotFound([]() {
+    rcctl::WebRouteHandlers routes = {};
+    routes.root = handleRoot;
+    routes.captiveRedirect = redirectCaptivePortal;
+    routes.apiState = handleApiState;
+    routes.apiActivity = handleApiActivity;
+    routes.apiInputs = handleApiInputs;
+    routes.apiVirtualAdd = handleApiVirtualAdd;
+    routes.apiVirtualUpdate = handleApiVirtualUpdate;
+    routes.apiVirtualDelete = handleApiVirtualDelete;
+    routes.apiOutputAdd = handleApiOutputAdd;
+    routes.apiOutputUpdate = handleApiOutputUpdate;
+    routes.apiOutputDelete = handleApiOutputDelete;
+    routes.apiPresetApply = handleApiPresetApply;
+    routes.apiModelSetDefault = handleApiModelSetDefault;
+    routes.apiModelCreate = handleApiModelCreate;
+    routes.apiModelSaveCurrent = handleApiModelSaveCurrent;
+    routes.apiModelRevert = handleApiModelRevert;
+    routes.apiModelDelete = handleApiModelDelete;
+    routes.apiApConfigSet = handleApiApConfigSet;
+    routes.apiApConfigApplyReboot = handleApiApConfigApplyReboot;
+    routes.apiPairingOn = handleApiPairingOn;
+    routes.apiPairingOff = handleApiPairingOff;
+    routes.apiLearnDetect = handleApiLearnDetect;
+    routes.notFound = []() {
         if (g_server.method() == HTTP_GET) {
             redirectCaptivePortal();
             return;
         }
         g_server.send(404, "text/plain", "Not found");
-    });
+    };
+    rcctl::registerWebRoutes(g_server, routes);
 
     g_server.begin();
     g_dnsServer.start(53, "*", WiFi.softAPIP());
@@ -1218,6 +1074,8 @@ void setup() {
     rcctl::applyPersistedConfig(cfg, &err);
     g_modelDirty = false;
 
+    // Best-effort mount: streamWebUiPage() retries and returns explicit HTTP error if missing.
+    initWebUiStorage();
     setupWebUi();
     rcctl::applyFailsafeAllOutputs();
 }
@@ -1231,24 +1089,8 @@ void loop() {
     g_dnsServer.processNextRequest();
     g_server.handleClient();
 
-    if (g_gamepad && g_gamepad->isConnected()) {
-        if (g_gamepad->hasData()) {
-            g_lastPacketMs = millis();
-            g_signalTimedOut = false;
-            rcctl::processGamepadToOutputs(g_gamepad);
-        } else {
-            const uint32_t now = millis();
-            if (now - g_lastPacketMs > kSignalTimeoutMs) {
-                rcctl::applyFailsafeAllOutputs();
-                g_signalTimedOut = true;
-            }
-        }
-    } else {
-        rcctl::evaluateVirtualRuntime(nullptr);
-        rcctl::applyFailsafeAllOutputs();
-    }
-
     const uint32_t now = millis();
+    rcctl::processControlTick(g_gamepad, now, kSignalTimeoutMs, &g_lastPacketMs, &g_signalTimedOut);
     if (now - g_lastIoTraceMs > kIoTraceMs) {
         g_lastIoTraceMs = now;
         emitIoTrace(g_gamepad);
@@ -1256,12 +1098,7 @@ void loop() {
 
     if (RCCTL_DEBUG_LOG && now - g_lastUiLogMs > kUiRefreshMs) {
         g_lastUiLogMs = now;
-        int active = 0;
-        for (int i = 0; i < kMaxOutputChannels; ++i) {
-            if (g_outputs[i].used) {
-                active++;
-            }
-        }
+        const int active = rcctl::countActiveOutputs(g_outputs);
         Console.printf("Status: outputs=%d gamepad=%s\n", active, (g_gamepad && g_gamepad->isConnected()) ? "ON" : "OFF");
     }
 

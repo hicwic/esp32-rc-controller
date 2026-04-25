@@ -368,6 +368,8 @@ bool setupOutputHardware(int index, String* error) {
     if (out.type == ChannelType::Pwm) {
         g_pwmOutputs[index].setPeriodHertz(50);
         const uint8_t requestedPin = out.pin;
+        // Try requested pin first, then scan alternatives compatible with the current target.
+        // This allows presets to travel across boards with different PWM-capable pin maps.
         auto tryAttachOnPin = [&](uint8_t pin) {
             if (!ESP32PWM::hasPwm(pin)) {
                 return false;
@@ -595,6 +597,7 @@ bool applyPersistedConfig(const PersistedConfig& cfg, String* errorOut) {
     }
 
     auto restoreOld = [&]() {
+        // Transaction rollback: if any output setup fails, bring previous runtime config back.
         for (int i = 0; i < kMaxVirtualInputs; ++i) {
             g_virtualInputs[i] = oldInputs[i];
         }

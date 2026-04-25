@@ -47,11 +47,17 @@ Planned/expected compatibility: **ESP32-WROOM-32** (including DualShock 4 over B
 For step-by-step screenshots in context, see the [User Guide](docs/USER_GUIDE.md).
 
 Repository structure (quick):
-- `main/sketch.cpp`: runtime orchestration, web handlers, hardware glue
-- `main/web_ui.cpp`: embedded frontend page (HTML/CSS/JS)
+- `main/sketch.cpp`: top-level orchestration (setup/loop, AP/BT init, endpoint handlers)
+- `main/web_routes.*`: centralized HTTP route registration
+- `main/state_service.*`: JSON payload builders for `/api/state`, `/api/activity`, `/api/inputs`
+- `main/json_utils.*`: lightweight JSON writer + shared escaping
+- `main/runtime_loop.*`: control tick (gamepad data, failsafe behavior)
+- `main/preset_service.*`: user preset helpers (save/name collision handling)
 - `main/control_inputs.*`: gamepad input definitions + normalization + learn detection
-- `main/rc_model.*`: input/output runtime model and signal processing
-- `main/preset_store.*`: preset/NVS persistence helpers
+- `main/rc_model.*`: virtual input/output runtime model and signal processing
+- `main/preset_store.*`: preset/NVS low-level persistence
+- `main/web_ui.*`: filesystem mount + `index.html` streaming
+- `data/index.html`: frontend UI asset served from SPIFFS
 - `components/`: third-party components (e.g. ESP32Servo)
 - `patches/`: local component patches
 
@@ -63,6 +69,9 @@ pio run -e esp32-s3-devkitc-1
 
 # Upload
 pio run -e esp32-s3-devkitc-1 -t upload
+
+# Upload UI filesystem image (required after frontend changes)
+pio run -e esp32-s3-devkitc-1 -t uploadfs
 
 # Serial monitor
 pio device monitor -p COM8 -b 115200
@@ -79,6 +88,7 @@ If `pio` is not in your PATH on Windows, use:
 - Some boards report flash-size mismatch warnings in PlatformIO if board config and physical flash differ.
 - Current AP/channel coexistence behavior is tuned for development and may still need per-board tuning.
 - `car` and `excavator` are intentionally readonly baseline presets.
+- The UI is now loaded from SPIFFS (`data/index.html`), so flashing filesystem image is required.
 
 ## AI-assisted development
 

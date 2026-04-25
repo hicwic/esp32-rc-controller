@@ -68,15 +68,20 @@ struct PresetDirectory {
 };
 
 String sanitizePresetName(const String& in);
+// Directory helpers for user presets stored in NVS.
 bool loadPresetDirectory(PresetDirectory* out);
 bool savePresetDirectory(const PresetDirectory& dir);
+// Stores/loads a user preset blob by name. Built-in presets are handled elsewhere.
 bool saveUserPresetBlob(const String& rawName, const PersistedConfig* sourceCfg, String* errorOut = nullptr);
 bool loadUserPreset(const String& rawName, PersistedConfig* out, String* errorOut = nullptr);
 bool deleteUserPreset(const String& rawName, String* errorOut = nullptr);
+// Built-in preset factories used as immutable templates.
 void buildBuiltinPresetRcCar(PersistedConfig* cfg);
 void buildBuiltinPresetExcavator(PersistedConfig* cfg);
 void buildBuiltinPresetSkidSteer(PersistedConfig* cfg);
+// Resolves either built-in presets or user presets.
 bool loadAnyPreset(const String& name, PersistedConfig* out, String* errorOut = nullptr);
+// Persists/loads the preset selected at boot.
 bool saveBootModelName(const String& rawName);
 String loadBootModelName();
 

@@ -38,8 +38,13 @@ struct InputDefinition {
 extern const InputDefinition kInputs[];
 extern const size_t kInputCount;
 
+// Returns static metadata for an input identifier, or nullptr if unknown.
 const InputDefinition* getInputDefinition(InputId id);
+// Converts a raw gamepad input into a normalized scalar:
+// - centered axes in [-1..1]
+// - triggers and digital inputs in [0..1]
 float normalizedForInput(InputId id, ControllerPtr ctl);
+// Applies a generic "active" threshold depending on input kind.
 bool isInputActive(InputId id, ControllerPtr ctl);
+// Picks the strongest currently active control for input-learning UX.
 InputId detectDominantInput(ControllerPtr ctl);
-
