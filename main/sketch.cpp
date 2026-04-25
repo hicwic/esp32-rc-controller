@@ -49,7 +49,17 @@ constexpr uint32_t kBtPairingScanOnMs = 3500;
 constexpr uint32_t kBtPairingScanOffMs = 900;
 
 #ifndef RCCTL_ENABLE_IO_TRACE
+#ifdef DEBUG
 #define RCCTL_ENABLE_IO_TRACE 1
+#else
+#define RCCTL_ENABLE_IO_TRACE 0
+#endif
+#endif
+
+#ifdef DEBUG
+#define RCCTL_DEBUG_LOG 1
+#else
+#define RCCTL_DEBUG_LOG 0
 #endif
 
 ControllerPtr g_gamepad = nullptr;
@@ -233,7 +243,11 @@ void setBtScanActive(bool enabled, const char* reason) {
     }
     BP32.enableNewBluetoothConnections(enabled);
     g_btScanActive = enabled;
+#if RCCTL_DEBUG_LOG
     Console.printf("BT scan: %s (%s)\n", enabled ? "ON" : "OFF", reason);
+#else
+    (void)reason;
+#endif
 }
 
 void updateBtScanScheduler() {
@@ -246,7 +260,9 @@ void updateBtScanScheduler() {
 
     if (g_pairingScanEnabled && now > g_pairingScanUntilMs) {
         g_pairingScanEnabled = false;
+#if RCCTL_DEBUG_LOG
         Console.println("BT pairing mode: timeout -> OFF");
+#endif
         g_btScanToggleAtMs = 0;
     }
 
@@ -456,7 +472,7 @@ String nextAvailableCustomModelName(const String& baseName) {
     return base + "_" + String(millis() % 1000);
 }
 
-void handleRoot() {
+String buildInputsJson() {
     String inputsJson = "[";
     bool firstInput = true;
     for (size_t i = 0; i < kInputCount; ++i) {
@@ -477,7 +493,15 @@ void handleRoot() {
         inputsJson += "\"}";
     }
     inputsJson += "]";
-    g_server.send(200, "text/html", buildWebUiPage(inputsJson));
+    return inputsJson;
+}
+
+void handleRoot() {
+    streamWebUiPage(g_server);
+}
+
+void handleApiInputs() {
+    g_server.send(200, "application/json", buildInputsJson());
 }
 
 void redirectCaptivePortal() {
@@ -1096,6 +1120,7 @@ void setupWebUi() {
     g_server.on("/fwlink", HTTP_GET, redirectCaptivePortal);
 
     g_server.on("/api/state", HTTP_GET, handleApiState);
+    g_server.on("/api/inputs", HTTP_GET, handleApiInputs);
     g_server.on("/api/virtual_add", HTTP_POST, handleApiVirtualAdd);
     g_server.on("/api/virtual_update", HTTP_POST, handleApiVirtualUpdate);
     g_server.on("/api/virtual_delete", HTTP_POST, handleApiVirtualDelete);
@@ -1155,9 +1180,11 @@ void onDisconnectedController(ControllerPtr ctl) {
 }  // namespace
 
 void setup() {
+#if RCCTL_DEBUG_LOG
     Console.printf("Firmware: %s\n", BP32.firmwareVersion());
     const uint8_t* addr = BP32.localBdAddress();
     Console.printf("BD Addr: %2X:%2X:%2X:%2X:%2X:%2X\n", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
+#endif
 
     esp_err_t nvsErr = nvs_flash_init();
     if (nvsErr == ESP_ERR_NVS_NO_FREE_PAGES || nvsErr == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -1227,7 +1254,7 @@ void loop() {
         emitIoTrace(g_gamepad);
     }
 
-    if (now - g_lastUiLogMs > kUiRefreshMs) {
+    if (RCCTL_DEBUG_LOG && now - g_lastUiLogMs > kUiRefreshMs) {
         g_lastUiLogMs = now;
         int active = 0;
         for (int i = 0; i < kMaxOutputChannels; ++i) {

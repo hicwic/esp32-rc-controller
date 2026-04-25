@@ -1,7 +1,32 @@
 #include "web_ui.h"
+namespace {
+constexpr size_t kHttpChunkSize = 768;
 
-String buildWebUiPage(const String& inputsJson) {
-    String page = R"HTML(
+void sendProgmemChunked(WebServer& server, PGM_P content, size_t size) {
+    char buffer[kHttpChunkSize];
+    size_t offset = 0;
+    while (offset < size) {
+        const size_t chunk = min(kHttpChunkSize, size - offset);
+        memcpy_P(buffer, content + offset, chunk);
+        server.sendContent(buffer, chunk);
+        offset += chunk;
+        yield();
+    }
+}
+
+void sendRamChunked(WebServer& server, const String& content) {
+    const char* ptr = content.c_str();
+    size_t remaining = content.length();
+    while (remaining > 0) {
+        const size_t chunk = min(kHttpChunkSize, remaining);
+        server.sendContent(ptr, chunk);
+        ptr += chunk;
+        remaining -= chunk;
+        yield();
+    }
+}
+
+const char kWebUiPrefix[] PROGMEM = R"HTML(
 <!doctype html>
 <html>
 <head>
@@ -157,8 +182,10 @@ String buildWebUiPage(const String& inputsJson) {
 
   <div class="toast" id="toast"></div>
   <script>
-  (function(){
-    const INPUTS = __INPUTS_JSON__;
+  (async function(){
+    let INPUTS = [];
+)HTML";
+const char kWebUiSuffix[] PROGMEM = R"HTML(
     const state = {virtual_inputs:[], outputs:[], presets:[], currentModel:"-", bootModel:"-", modelDirty:false, pwmPins:[], apSsid:"", apPassword:""};
     const createState = {forkReadonly:false};
     const outputEditState = {allowRewire:false};
@@ -251,6 +278,15 @@ String buildWebUiPage(const String& inputsJson) {
       const txt = await r.text();
       try { const j = JSON.parse(txt); if (!r.ok && j && j.ok===undefined) j.ok=false; return j; }
       catch(_e){ return {ok:r.ok, message:txt||("HTTP "+r.status)}; }
+    }
+    async function loadInputs(){
+      try{
+        const r = await fetch("/api/inputs");
+        const data = await r.json();
+        INPUTS = Array.isArray(data) ? data : [];
+      }catch(_e){
+        INPUTS = [];
+      }
     }
 
     function fillInputSelect(el, selected, withNone){
@@ -555,6 +591,7 @@ String buildWebUiPage(const String& inputsJson) {
       refresh();
     });
 
+    await loadInputs();
     fillInputSelect(ui.virtualInput, 1, false);
     fillInputSelect(ui.virtualSecondary, 0, true);
     fillInputSelect(ui.virtualModifier, 0, true);
@@ -566,6 +603,11 @@ String buildWebUiPage(const String& inputsJson) {
 </body>
 </html>
 )HTML";
-    page.replace("__INPUTS_JSON__", inputsJson);
-    return page;
+}  // namespace
+void streamWebUiPage(WebServer& server) {
+    const size_t totalLen = (sizeof(kWebUiPrefix) - 1) + (sizeof(kWebUiSuffix) - 1);
+    server.setContentLength(totalLen);
+    server.send(200, "text/html", "");
+    sendProgmemChunked(server, kWebUiPrefix, sizeof(kWebUiPrefix) - 1);
+    sendProgmemChunked(server, kWebUiSuffix, sizeof(kWebUiSuffix) - 1);
 }

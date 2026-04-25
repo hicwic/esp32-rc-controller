@@ -1,6 +1,6 @@
 #pragma once
 
 #include <Arduino.h>
+#include <WebServer.h>
 
-String buildWebUiPage(const String& inputsJson);
-
+void streamWebUiPage(WebServer& server);

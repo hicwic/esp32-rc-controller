@@ -6,6 +6,11 @@
 namespace rcctl {
 
 namespace {
+#ifdef DEBUG
+#define RCCTL_DEBUG_LOG 1
+#else
+#define RCCTL_DEBUG_LOG 0
+#endif
 
 constexpr int kPwmMinUs = 1000;
 constexpr int kPwmNeutralUs = 1500;
@@ -202,6 +207,19 @@ bool outputPinAlreadyUsed(uint8_t pin, int ignoreIndex) {
     return false;
 }
 
+int firstAvailablePwmPin(int ignoreIndex) {
+    for (int pin = 0; pin <= 48; ++pin) {
+        if (!ESP32PWM::hasPwm(pin)) {
+            continue;
+        }
+        if (outputPinAlreadyUsed(static_cast<uint8_t>(pin), ignoreIndex)) {
+            continue;
+        }
+        return pin;
+    }
+    return -1;
+}
+
 float evaluateVirtualInput(const VirtualInputConfig& in, ControllerPtr ctl) {
     if (!in.used || in.primary == InputId::None || !ctl || !ctl->isConnected()) {
         return 0.0f;
@@ -346,25 +364,56 @@ void releaseOutputHardware(int index) {
 }
 
 bool setupOutputHardware(int index, String* error) {
-    const OutputChannelConfig& out = g_outputs[index];
-    if (outputPinAlreadyUsed(out.pin, index)) {
-        if (error) {
-            *error = "Pin already used";
-        }
-        return false;
-    }
-
+    OutputChannelConfig& out = g_outputs[index];
     if (out.type == ChannelType::Pwm) {
         g_pwmOutputs[index].setPeriodHertz(50);
-        int attached = g_pwmOutputs[index].attach(out.pin, kPwmMinUs, kPwmMaxUs);
-        if (attached <= 0) {
+        const uint8_t requestedPin = out.pin;
+        auto tryAttachOnPin = [&](uint8_t pin) {
+            if (!ESP32PWM::hasPwm(pin)) {
+                return false;
+            }
+            if (outputPinAlreadyUsed(pin, index)) {
+                return false;
+            }
+            // Clear any previous attempt before trying a new pin/channel combo.
+            if (g_pwmOutputs[index].attached()) {
+                g_pwmOutputs[index].detach();
+            }
+            g_pwmOutputs[index].attach(pin, kPwmMinUs, kPwmMaxUs);
+            if (!g_pwmOutputs[index].attached()) {
+                return false;
+            }
+            out.pin = pin;
+            g_pwmAttached[index] = true;
+            return true;
+        };
+
+        if (!tryAttachOnPin(requestedPin)) {
+            for (int pin = 0; pin <= 48; ++pin) {
+                if (pin == requestedPin) {
+                    continue;
+                }
+                if (tryAttachOnPin(static_cast<uint8_t>(pin))) {
+#if RCCTL_DEBUG_LOG
+                    Console.printf("PWM pin remap: CH%d GPIO %d -> GPIO %d\n", index, requestedPin, pin);
+#endif
+                    break;
+                }
+            }
+            if (!g_pwmAttached[index]) {
+                if (error) {
+                    *error = "PWM attach failed on GPIO " + String(requestedPin);
+                }
+                return false;
+            }
+        }
+    } else {
+        if (outputPinAlreadyUsed(out.pin, index)) {
             if (error) {
-                *error = "PWM attach failed";
+                *error = "Pin already used";
             }
             return false;
         }
-        g_pwmAttached[index] = true;
-    } else {
         pinMode(out.pin, OUTPUT);
         digitalWrite(out.pin, LOW);
     }
@@ -595,6 +644,20 @@ bool applyPersistedConfig(const PersistedConfig& cfg, String* errorOut) {
         g_outputs[i].thresholdPercent = constrain(pc.threshold, 0, 100);
         memcpy(g_outputs[i].name, pc.name, sizeof(g_outputs[i].name));
         g_outputs[i].name[sizeof(g_outputs[i].name) - 1] = '\0';
+        if (g_outputs[i].type == ChannelType::Pwm && !ESP32PWM::hasPwm(g_outputs[i].pin)) {
+            const int fallbackPin = firstAvailablePwmPin(i);
+            if (fallbackPin < 0) {
+                restoreOld();
+                if (errorOut) {
+                    *errorOut = "Invalid preset: no PWM-compatible GPIO available";
+                }
+                return false;
+            }
+#if RCCTL_DEBUG_LOG
+            Console.printf("Preset pin remap: CH%d GPIO %d -> GPIO %d (PWM incompatible)\n", i, g_outputs[i].pin, fallbackPin);
+#endif
+            g_outputs[i].pin = static_cast<uint8_t>(fallbackPin);
+        }
 
         String error;
         if (!setupOutputHardware(i, &error)) {
