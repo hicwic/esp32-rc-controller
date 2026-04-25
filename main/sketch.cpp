@@ -3,6 +3,7 @@
 #include "sdkconfig.h"
 
 #include <Arduino.h>
+#include <AsyncUDP.h>  // Force Arduino component dependency discovery for DNSServer.
 #include <Bluepad32.h>
 #include <DNSServer.h>
 #include <WebServer.h>
