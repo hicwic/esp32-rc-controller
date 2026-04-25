@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RC Controller Installer</title>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;line-height:1.45;color:#111}
+    .card{max-width:760px;border:1px solid #ddd;border-radius:12px;padding:16px}
+    h1{margin-top:0}
+    select{padding:8px 10px;border-radius:8px;border:1px solid #bbb}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .hint{color:#555;font-size:14px}
+    code{background:#f5f5f5;padding:2px 6px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>RC Controller Installer</h1>
+    <p>Choose your board, then click <strong>Connect</strong>.</p>
+
+    <div class="row">
+      <label for="board"><strong>Board:</strong></label>
+      <select id="board">
+        <option value="esp32dev">ESP32 Dev Module (esp32dev)</option>
+        <option value="esp32-s3-devkitc-1">ESP32-S3 DevKitC-1</option>
+        <option value="esp32-c3-devkitc-02">ESP32-C3 DevKitC-02</option>
+        <option value="esp32-c6-devkitc-1">ESP32-C6 DevKitC-1</option>
+      </select>
+      <esp-web-install-button id="installBtn"></esp-web-install-button>
+    </div>
+
+    <p class="hint">
+      The installer uses the latest GitHub release assets:
+      <code>manifest-&lt;board&gt;.json</code>.
+    </p>
+    <p class="hint">
+      If your board does not connect, hold <code>BOOT</code> while clicking Connect.
+    </p>
+  </div>
+
+  <script>
+    const ownerRepo = "hicwic/esp32-rc-controller";
+    const boardSel = document.getElementById("board");
+    const btn = document.getElementById("installBtn");
+
+    function setManifest(board) {
+      const url = `https://github.com/${ownerRepo}/releases/latest/download/manifest-${board}.json`;
+      btn.manifest = url;
+    }
+
+    boardSel.addEventListener("change", () => setManifest(boardSel.value));
+    setManifest(boardSel.value);
+  </script>
+</body>
+</html>
+

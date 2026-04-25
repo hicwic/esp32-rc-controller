@@ -36,6 +36,24 @@ Planned/expected compatibility: **ESP32-WROOM-32** (including DualShock 4 over B
 ## Documentation
 
 - User guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+- Flashing guide (minimal tools): [docs/FLASHING.md](docs/FLASHING.md)
+- Web installer page template: [docs/install.html](docs/install.html)
+
+## Nightly Releases (GitHub Actions)
+
+Nightlies are built by workflow: `.github/workflows/nightly-release.yml`.
+
+How to trigger manually:
+1. Open GitHub `Actions` tab.
+2. Select `Nightly Release`.
+3. Click `Run workflow`.
+
+Generated release assets include, per board:
+- `rc-controller-<env>-bootloader.bin`
+- `rc-controller-<env>-partitions.bin`
+- `rc-controller-<env>-firmware.bin`
+- `rc-controller-<env>-spiffs.bin`
+- `manifest-<env>.json`
 
 ## UI Screenshots
 

@@ -1,0 +1,112 @@
+name: Nightly Release
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 2 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      name: ${{ steps.meta.outputs.name }}
+    steps:
+      - name: Compute nightly metadata
+        id: meta
+        shell: bash
+        run: |
+          ts="$(date -u +'%Y%m%d-%H%M')"
+          tag="nightly-${ts}"
+          name="Nightly ${ts} (UTC)"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env: esp32dev
+            chip: ESP32
+          - env: esp32-s3-devkitc-1
+            chip: ESP32-S3
+          - env: esp32-c3-devkitc-02
+            chip: ESP32-C3
+          - env: esp32-c6-devkitc-1
+            chip: ESP32-C6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build firmware
+        run: pio run -e "${{ matrix.env }}"
+
+      - name: Build filesystem image
+        run: pio run -e "${{ matrix.env }}" -t buildfs
+
+      - name: Export board bundle
+        run: |
+          python tools/release/export_bundle.py \
+            --env "${{ matrix.env }}" \
+            --chip "${{ matrix.chip }}" \
+            --out "release/${{ matrix.env }}"
+
+      - name: Upload board artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.env }}
+          path: release/${{ matrix.env }}
+          if-no-files-found: error
+
+  release:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all bundles
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets
+
+      - name: Generate release manifests
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          python tools/release/generate_manifests.py \
+            --assets-root release_assets \
+            --tag "$TAG" \
+            --repo "$REPO"
+
+      - name: Flatten release files
+        shell: bash
+        run: |
+          mkdir -p out
+          find release_assets -type f -exec cp {} out/ \;
+          ls -la out
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: ${{ needs.prepare.outputs.name }}
+          prerelease: false
+          generate_release_notes: true
+          files: out/*
