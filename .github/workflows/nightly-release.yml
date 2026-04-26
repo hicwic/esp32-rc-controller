@@ -50,7 +50,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install PlatformIO
-        run: pip install --upgrade platformio
+        run: pip install --upgrade platformio "click<8.2"
 
       - name: Build firmware
         run: pio run -e "${{ matrix.env }}"
