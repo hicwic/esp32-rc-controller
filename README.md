@@ -48,7 +48,15 @@ How to trigger manually:
 2. Select `Nightly Release`.
 3. Click `Run workflow`.
 
-Generated release assets include, per board:
+Release bundles are currently generated for:
+- `esp32dev`
+- `esp32-s3-devkitc-1`
+
+Experimental compile-only CI targets (no release bundle yet):
+- `esp32-c3-devkitc-02`
+- `esp32-c6-devkitc-1`
+
+Generated release assets include, for each release-ready board:
 - `rc-controller-<env>-bootloader.bin`
 - `rc-controller-<env>-partitions.bin`
 - `rc-controller-<env>-firmware.bin`

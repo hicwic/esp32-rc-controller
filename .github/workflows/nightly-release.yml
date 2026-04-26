@@ -34,12 +34,16 @@ jobs:
         include:
           - env: esp32dev
             chip: ESP32
+            release_ready: true
           - env: esp32-s3-devkitc-1
             chip: ESP32-S3
+            release_ready: true
           - env: esp32-c3-devkitc-02
             chip: ESP32-C3
+            release_ready: false
           - env: esp32-c6-devkitc-1
             chip: ESP32-C6
+            release_ready: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,9 +60,11 @@ jobs:
         run: pio run -e "${{ matrix.env }}"
 
       - name: Build filesystem image
+        if: matrix.release_ready
         run: pio run -e "${{ matrix.env }}" -t buildfs
 
       - name: Export board bundle
+        if: matrix.release_ready
         run: |
           python tools/release/export_bundle.py \
             --env "${{ matrix.env }}" \
@@ -66,11 +72,19 @@ jobs:
             --out "release/${{ matrix.env }}"
 
       - name: Upload board artifact
+        if: matrix.release_ready
         uses: actions/upload-artifact@v4
         with:
           name: bundle-${{ matrix.env }}
           path: release/${{ matrix.env }}
           if-no-files-found: error
+
+      - name: Mark experimental target
+        if: ${{ !matrix.release_ready }}
+        shell: bash
+        run: |
+          echo "WARNING: ${matrix.env} is compile-only in CI (no filesystem/release bundle)." >> "$GITHUB_STEP_SUMMARY"
+          echo "WARNING: ${matrix.env} is currently unvalidated on hardware for end-users." >> "$GITHUB_STEP_SUMMARY"
 
   release:
     needs: [prepare, build]

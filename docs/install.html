@@ -25,8 +25,6 @@
       <select id="board">
         <option value="esp32dev">ESP32 Dev Module (esp32dev)</option>
         <option value="esp32-s3-devkitc-1">ESP32-S3 DevKitC-1</option>
-        <option value="esp32-c3-devkitc-02">ESP32-C3 DevKitC-02</option>
-        <option value="esp32-c6-devkitc-1">ESP32-C6 DevKitC-1</option>
       </select>
       <esp-web-install-button id="installBtn"></esp-web-install-button>
     </div>
@@ -37,6 +35,9 @@
     </p>
     <p class="hint">
       If your board does not connect, hold <code>BOOT</code> while clicking Connect.
+    </p>
+    <p class="hint">
+      <strong>Note:</strong> ESP32-C3 and ESP32-C6 are currently experimental (compile-only CI, not released for end-users yet).
     </p>
   </div>
 
@@ -55,4 +56,3 @@
   </script>
 </body>
 </html>
-

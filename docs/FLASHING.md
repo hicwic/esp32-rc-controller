@@ -2,6 +2,15 @@
 
 This guide is intended for non-technical users.
 
+## Supported Boards (End-User Releases)
+
+- ESP32 Dev Module (`esp32dev`)
+- ESP32-S3 DevKitC-1 (`esp32-s3-devkitc-1`)
+
+Experimental (not released for end-users yet):
+- ESP32-C3 DevKitC-02 (`esp32-c3-devkitc-02`)
+- ESP32-C6 DevKitC-1 (`esp32-c6-devkitc-1`)
+
 ## 1. Recommended Method: Web Installer
 
 ### What to install on PC
@@ -50,4 +59,3 @@ For advanced users only:
 - include filesystem image (`spiffs.bin`)
 
 For most users, prefer the web installer.
-
