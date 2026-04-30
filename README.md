@@ -62,6 +62,7 @@ Generated release assets include, for each release-ready board:
 - `rc-controller-<env>-firmware.bin`
 - `rc-controller-<env>-spiffs.bin`
 - `manifest-<env>.json`
+- `rc-controller-<env>-meta.json`
 
 ## UI Screenshots
 

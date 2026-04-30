@@ -40,6 +40,10 @@
       <code>manifest-&lt;board&gt;.json</code>.
     </p>
     <p class="hint">
+      Fallback is automatic: if the manifest file is missing, this page can build one from
+      <code>rc-controller-&lt;board&gt;-meta.json</code>.
+    </p>
+    <p class="hint">
       If your board does not connect, hold <code>BOOT</code> while clicking Connect.
     </p>
     <p class="hint">
@@ -54,16 +58,77 @@
     const tagInput = document.getElementById("tag");
     const btn = document.getElementById("installBtn");
 
-    function setManifest() {
+    async function fetchJsonIfOk(url) {
+      try {
+        const r = await fetch(url);
+        if (!r.ok) return null;
+        return await r.json();
+      } catch (_e) {
+        return null;
+      }
+    }
+
+    function computeBaseReleaseUrl(mode, tag) {
+      if (mode === "tag" && tag) {
+        return `https://github.com/${ownerRepo}/releases/download/${tag}`;
+      }
+      return `https://github.com/${ownerRepo}/releases/latest/download`;
+    }
+
+    function metaToManifest(meta, versionTag, baseUrl, env) {
+      const files = meta.files || {};
+      const offsets = meta.offsets || {};
+      const chipFamily = meta.chip_family || "ESP32";
+      return {
+        name: `RC Controller (${env})`,
+        version: versionTag || "latest",
+        new_install_prompt_erase: true,
+        builds: [
+          {
+            chipFamily: chipFamily,
+            parts: [
+              { path: `${baseUrl}/${files.bootloader}`, offset: offsets.bootloader || "0x1000" },
+              { path: `${baseUrl}/${files.partitions}`, offset: offsets.partitions || "0x8000" },
+              { path: `${baseUrl}/${files.firmware}`, offset: offsets.firmware || "0x10000" },
+              { path: `${baseUrl}/${files.filesystem}`, offset: offsets.filesystem || "0x290000" }
+            ]
+          }
+        ]
+      };
+    }
+
+    async function setManifest() {
       const board = boardSel.value;
       const mode = channelSel.value;
+      const tag = (tagInput.value || "").trim();
+      const baseUrl = computeBaseReleaseUrl(mode, tag);
+      const versionTag = mode === "tag" ? tag : "latest";
+
       let url = `https://github.com/${ownerRepo}/releases/latest/download/manifest-${board}.json`;
       if (mode === "tag") {
-        const tag = (tagInput.value || "").trim();
         if (tag) {
           url = `https://github.com/${ownerRepo}/releases/download/${tag}/manifest-${board}.json`;
         }
       }
+
+      // Preferred path: ready-to-use ESP Web Tools manifest.
+      const manifest = await fetchJsonIfOk(url);
+      if (manifest) {
+        btn.manifest = url;
+        return;
+      }
+
+      // Fallback path: release metadata -> build manifest on the fly.
+      const metaUrl = `${baseUrl}/rc-controller-${board}-meta.json`;
+      const meta = await fetchJsonIfOk(metaUrl);
+      if (meta) {
+        const generated = metaToManifest(meta, versionTag, baseUrl, board);
+        const blobUrl = URL.createObjectURL(new Blob([JSON.stringify(generated)], { type: "application/json" }));
+        btn.manifest = blobUrl;
+        return;
+      }
+
+      // Keep explicit URL for visibility when assets are missing.
       btn.manifest = url;
     }
 
