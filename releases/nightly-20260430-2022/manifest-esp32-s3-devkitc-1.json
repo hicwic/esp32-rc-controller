@@ -1,0 +1,28 @@
+{
+  "name": "RC Controller (esp32-s3-devkitc-1)",
+  "version": "nightly-20260430-2022",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "https://github.com/hicwic/esp32-rc-controller/releases/download/nightly-20260430-2022/rc-controller-esp32-s3-devkitc-1-bootloader.bin",
+          "offset": "0x1000"
+        },
+        {
+          "path": "https://github.com/hicwic/esp32-rc-controller/releases/download/nightly-20260430-2022/rc-controller-esp32-s3-devkitc-1-partitions.bin",
+          "offset": "0x8000"
+        },
+        {
+          "path": "https://github.com/hicwic/esp32-rc-controller/releases/download/nightly-20260430-2022/rc-controller-esp32-s3-devkitc-1-firmware.bin",
+          "offset": "0x10000"
+        },
+        {
+          "path": "https://github.com/hicwic/esp32-rc-controller/releases/download/nightly-20260430-2022/rc-controller-esp32-s3-devkitc-1-spiffs.bin",
+          "offset": "0x220000"
+        }
+      ]
+    }
+  ]
+}

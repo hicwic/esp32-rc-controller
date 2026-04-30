@@ -1,0 +1,28 @@
+{
+  "name": "RC Controller (esp32dev)",
+  "version": "nightly-20260430-2022",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        {
+          "path": "https://github.com/hicwic/esp32-rc-controller/releases/download/nightly-20260430-2022/rc-controller-esp32dev-bootloader.bin",
+          "offset": "0x1000"
+        },
+        {
+          "path": "https://github.com/hicwic/esp32-rc-controller/releases/download/nightly-20260430-2022/rc-controller-esp32dev-partitions.bin",
+          "offset": "0x8000"
+        },
+        {
+          "path": "https://github.com/hicwic/esp32-rc-controller/releases/download/nightly-20260430-2022/rc-controller-esp32dev-firmware.bin",
+          "offset": "0x10000"
+        },
+        {
+          "path": "https://github.com/hicwic/esp32-rc-controller/releases/download/nightly-20260430-2022/rc-controller-esp32dev-spiffs.bin",
+          "offset": "0x220000"
+        }
+      ]
+    }
+  ]
+}
