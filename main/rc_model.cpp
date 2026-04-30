@@ -87,6 +87,19 @@ float sourceValueByIndex(int8_t idx) {
     return g_virtualRuntime[idx];
 }
 
+bool isInputEnabledByModifier(const VirtualInputConfig& in, bool modifierPressed) {
+    if (in.modifier == InputId::None) {
+        return true;
+    }
+    if (in.modifierFunction == ModifierFunction::Activate) {
+        return modifierPressed;
+    }
+    if (in.modifierFunction == ModifierFunction::Desactivate) {
+        return !modifierPressed;
+    }
+    return true;
+}
+
 float evaluateToggleVirtualInput(int index, const VirtualInputConfig& in, ControllerPtr ctl, int positions) {
     if (index < 0 || index >= kMaxVirtualInputs || !ctl || !ctl->isConnected()) {
         return 0.0f;
@@ -102,6 +115,10 @@ float evaluateToggleVirtualInput(int index, const VirtualInputConfig& in, Contro
     const bool modifierPressed = (in.modifier != InputId::None) ? isInputActive(in.modifier, ctl) : false;
     const bool modifierRise = modifierPressed && !g_toggleModifierPressedPrev[index];
     g_toggleModifierPressedPrev[index] = modifierPressed;
+
+    if (!isInputEnabledByModifier(in, modifierPressed)) {
+        return 0.0f;
+    }
 
     if (modifierRise && positions == 3 && in.modifierFunction == ModifierFunction::Center) {
         g_togglePosition[index] = 1;  // center
@@ -233,6 +250,10 @@ float evaluateVirtualInput(const VirtualInputConfig& in, ControllerPtr ctl) {
 
     if (in.modifierFunction == ModifierFunction::Reverse && in.modifier != InputId::None && isInputActive(in.modifier, ctl)) {
         v = -v;
+    }
+
+    if (!isInputEnabledByModifier(in, (in.modifier != InputId::None) ? isInputActive(in.modifier, ctl) : false)) {
+        return 0.0f;
     }
 
     v = applyDeadzoneSigned(v, in.deadzonePercent);
@@ -567,6 +588,12 @@ bool applyPersistedConfig(const PersistedConfig& cfg, String* errorOut) {
                 break;
             case static_cast<uint8_t>(ModifierFunction::Center):
                 g_virtualInputs[i].modifierFunction = ModifierFunction::Center;
+                break;
+            case static_cast<uint8_t>(ModifierFunction::Activate):
+                g_virtualInputs[i].modifierFunction = ModifierFunction::Activate;
+                break;
+            case static_cast<uint8_t>(ModifierFunction::Desactivate):
+                g_virtualInputs[i].modifierFunction = ModifierFunction::Desactivate;
                 break;
             default:
                 g_virtualInputs[i].modifierFunction = ModifierFunction::None;

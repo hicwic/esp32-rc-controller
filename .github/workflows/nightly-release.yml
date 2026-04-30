@@ -83,8 +83,8 @@ jobs:
         if: ${{ !matrix.release_ready }}
         shell: bash
         run: |
-          echo "WARNING: ${matrix.env} is compile-only in CI (no filesystem/release bundle)." >> "$GITHUB_STEP_SUMMARY"
-          echo "WARNING: ${matrix.env} is currently unvalidated on hardware for end-users." >> "$GITHUB_STEP_SUMMARY"
+          echo "WARNING: ${{ matrix.env }} is compile-only in CI (no filesystem/release bundle)." >> "$GITHUB_STEP_SUMMARY"
+          echo "WARNING: ${{ matrix.env }} is currently unvalidated on hardware for end-users." >> "$GITHUB_STEP_SUMMARY"
 
   release:
     needs: [prepare, build]

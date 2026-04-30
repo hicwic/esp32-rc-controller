@@ -24,6 +24,8 @@ enum class ModifierFunction : uint8_t {
     None = 0,
     Reverse = 1,
     Center = 2,
+    Activate = 3,
+    Desactivate = 4,
 };
 
 enum class MixMode : uint8_t {

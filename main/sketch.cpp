@@ -117,6 +117,10 @@ const char* modifierFunctionLabel(rcctl::ModifierFunction f) {
             return "REV";
         case rcctl::ModifierFunction::Center:
             return "CTR";
+        case rcctl::ModifierFunction::Activate:
+            return "ACT";
+        case rcctl::ModifierFunction::Desactivate:
+            return "DSA";
         default:
             return "-";
     }
@@ -480,6 +484,12 @@ void parseVirtualFromRequest(VirtualInputConfig* out, int existingIndex) {
             break;
         case 2:
             out->modifierFunction = rcctl::ModifierFunction::Center;
+            break;
+        case 3:
+            out->modifierFunction = rcctl::ModifierFunction::Activate;
+            break;
+        case 4:
+            out->modifierFunction = rcctl::ModifierFunction::Desactivate;
             break;
         default:
             out->modifierFunction = rcctl::ModifierFunction::None;

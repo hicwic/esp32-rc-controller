@@ -105,7 +105,7 @@
         <div><label class="lbl">Primary input</label><div class="inline"><select id="virtualInput" class="grow"></select><button class="btn alt mini" id="learnPrimaryBtn" type="button">Learn</button></div></div>
         <div><label class="lbl">Secondary input (optional)</label><div class="inline"><select id="virtualSecondary" class="grow"></select><button class="btn alt mini" id="learnSecondaryBtn" type="button">Learn</button></div></div>
         <div><label class="lbl">Modifier input (optional)</label><div class="inline"><select id="virtualModifier" class="grow"></select><button class="btn alt mini" id="learnModifierBtn" type="button">Learn</button></div></div>
-        <div><label class="lbl">Modifier function</label><select id="virtualModifierFn"><option value="0">None</option><option value="1">Reverse</option><option value="2">Center</option></select></div>
+        <div><label class="lbl">Modifier function</label><select id="virtualModifierFn"><option value="0">None</option><option value="1">Reverse</option><option value="2">Center</option><option value="3">Activate</option><option value="4">Desactivate</option></select></div>
       </div>
       <div class="row"><button class="btn ok" id="virtualSaveBtn" type="button">Save</button><span class="hint" id="virtualLearnStatus"></span></div>
     </div>
@@ -294,6 +294,8 @@
       const v = Number(fn)||0;
       if (v===1) return "Reverse";
       if (v===2) return "Center";
+      if (v===3) return "Activate";
+      if (v===4) return "Desactivate";
       return "None";
     }
     function inputTypeLabel(t){
