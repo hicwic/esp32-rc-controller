@@ -52,7 +52,6 @@
   </div>
 
   <script>
-    const ownerRepo = "hicwic/esp32-rc-controller";
     const boardSel = document.getElementById("board");
     const channelSel = document.getElementById("channel");
     const tagInput = document.getElementById("tag");
@@ -69,10 +68,11 @@
     }
 
     function computeBaseReleaseUrl(mode, tag) {
+      const siteRoot = new URL(".", window.location.href).href.replace(/\/+$/, "");
       if (mode === "tag" && tag) {
-        return `https://github.com/${ownerRepo}/releases/download/${tag}`;
+        return `${siteRoot}/releases/${encodeURIComponent(tag)}`;
       }
-      return `https://github.com/${ownerRepo}/releases/latest/download`;
+      return `${siteRoot}/latest`;
     }
 
     function metaToManifest(meta, versionTag, baseUrl, env) {
@@ -103,13 +103,7 @@
       const tag = (tagInput.value || "").trim();
       const baseUrl = computeBaseReleaseUrl(mode, tag);
       const versionTag = mode === "tag" ? tag : "latest";
-
-      let url = `https://github.com/${ownerRepo}/releases/latest/download/manifest-${board}.json`;
-      if (mode === "tag") {
-        if (tag) {
-          url = `https://github.com/${ownerRepo}/releases/download/${tag}/manifest-${board}.json`;
-        }
-      }
+      const url = `${baseUrl}/manifest-${board}.json`;
 
       // Preferred path: ready-to-use ESP Web Tools manifest.
       const manifest = await fetchJsonIfOk(url);

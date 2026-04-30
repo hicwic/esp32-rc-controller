@@ -116,6 +116,26 @@ jobs:
           find release_assets -type f -exec cp {} out/ \;
           ls -la out
 
+      - name: Prepare GitHub Pages payload
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          rm -rf site
+          mkdir -p "site/latest" "site/releases/${TAG}"
+          cp out/* "site/latest/"
+          cp out/* "site/releases/${TAG}/"
+          cp docs/install.html "site/install.html"
+          ls -la site
+
+      - name: Publish installer + bundles to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: site
+          keep_files: true
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

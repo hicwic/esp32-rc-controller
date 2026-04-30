@@ -26,9 +26,7 @@ No Python, PlatformIO, or terminal is required.
 ### Steps
 
 1. Open the installer page:
-   - Repository page preview can show HTML source (normal on GitHub).
-   - Use the direct hosted URL instead:
-     `https://raw.githack.com/hicwic/esp32-rc-controller/main/docs/install.html`
+   - `https://hicwic.github.io/esp32-rc-controller/install.html`
 2. Select your board.
 3. Select channel:
    - `Latest release` for normal end-user updates.
@@ -50,6 +48,8 @@ If connection fails:
 2. Find the nightly entry you want.
 3. Copy its tag name (format: `nightly-YYYYMMDD-HHMM`).
 4. Paste it in the installer `Nightly / specific tag` field.
+
+Note: the installer page reads firmware files from the same GitHub Pages site to avoid browser CORS issues.
 
 ## 2. Release Assets (What is flashed)
 

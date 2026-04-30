@@ -38,6 +38,7 @@ Planned/expected compatibility: **ESP32-WROOM-32** (including DualShock 4 over B
 - User guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 - Flashing guide (minimal tools): [docs/FLASHING.md](docs/FLASHING.md)
 - Web installer page template: [docs/install.html](docs/install.html)
+- Hosted installer page: `https://hicwic.github.io/esp32-rc-controller/install.html`
 
 ## Nightly Releases (GitHub Actions)
 
