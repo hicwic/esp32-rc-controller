@@ -27,6 +27,10 @@ enum class InputId : uint8_t {
     ButtonR2,
     ButtonStart,
     ButtonSelect,
+    DpadUp,
+    DpadDown,
+    DpadLeft,
+    DpadRight,
 };
 
 struct InputDefinition {

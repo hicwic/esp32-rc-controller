@@ -11,6 +11,13 @@ This project uses:
 Main target currently used in development: **ESP32-S3-DevKitC-1**  
 Planned/expected compatibility: **ESP32-WROOM-32** (including DualShock 4 over Bluetooth Classic).
 
+## Compatibility (Tested Boards)
+
+| Board / Environment | Status | Bluetooth note |
+|---|---|---|
+| ESP32-WROOM-32 (`esp32dev`) | Tested OK | BLE + Bluetooth Classic supported by the current stack. |
+| ESP32-S3-DevKitC-1 (`esp32-s3-devkitc-1`) | Tested OK | BLE only in current firmware usage (works with BLE controllers such as Xbox); non-BLE/classic-only controllers are not supported on this board at the moment. |
+
 ## Features
 
 - Wi-Fi AP + captive portal web interface

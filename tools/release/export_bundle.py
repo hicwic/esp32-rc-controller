@@ -3,6 +3,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -35,6 +36,41 @@ def parse_filesystem_offset(partitions_bin: str) -> str:
     raise RuntimeError("Filesystem partition (spiffs/littlefs) not found in partition table.")
 
 
+def parse_image_offsets(build_dir: str) -> dict:
+    flash_args = os.path.join(build_dir, "flash_args")
+    if not os.path.exists(flash_args):
+        raise FileNotFoundError(flash_args)
+
+    offsets = {
+        "bootloader": None,
+        "partitions": None,
+        "firmware": None,
+    }
+
+    with open(flash_args, "r", encoding="utf-8") as f:
+        for raw in f:
+            line = raw.strip()
+            m = re.match(r"^(0x[0-9a-fA-F]+)\s+(.+)$", line)
+            if not m:
+                continue
+            off, path = m.group(1), m.group(2).strip()
+            low = path.lower()
+            base = os.path.basename(low)
+            if base == "bootloader.bin":
+                offsets["bootloader"] = off
+                continue
+            if "partition-table.bin" in low or base == "partitions.bin":
+                offsets["partitions"] = off
+                continue
+            if base.endswith(".bin"):
+                offsets["firmware"] = off
+
+    missing = [k for k, v in offsets.items() if v is None]
+    if missing:
+        raise RuntimeError(f"Could not parse offsets from flash_args: missing {', '.join(missing)}")
+    return offsets
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", required=True)
@@ -65,14 +101,15 @@ def main() -> None:
     shutil.copy2(firmware_src, os.path.join(args.out, firmware_name))
     shutil.copy2(fs_src, os.path.join(args.out, fs_name))
 
+    image_offsets = parse_image_offsets(build_dir)
     fs_offset = parse_filesystem_offset(partitions_src)
     meta = {
         "env": args.env,
         "chip_family": args.chip,
         "offsets": {
-            "bootloader": "0x1000",
-            "partitions": "0x8000",
-            "firmware": "0x10000",
+            "bootloader": image_offsets["bootloader"],
+            "partitions": image_offsets["partitions"],
+            "firmware": image_offsets["firmware"],
             "filesystem": fs_offset,
         },
         "files": {
@@ -88,4 +125,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

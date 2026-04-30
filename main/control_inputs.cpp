@@ -7,6 +7,10 @@ namespace {
 constexpr int kAxisMax = 512;
 constexpr int kTriggerMin = 0;
 constexpr int kTriggerMax = 1023;
+constexpr uint8_t kDpadUpBit = 0x01;
+constexpr uint8_t kDpadDownBit = 0x02;
+constexpr uint8_t kDpadRightBit = 0x04;
+constexpr uint8_t kDpadLeftBit = 0x08;
 
 }  // namespace
 
@@ -27,6 +31,10 @@ const InputDefinition kInputs[] = {
     {InputId::ButtonR2, "Button R2", InputKind::Digital},
     {InputId::ButtonStart, "Button Start", InputKind::Digital},
     {InputId::ButtonSelect, "Button Select", InputKind::Digital},
+    {InputId::DpadUp, "D-pad Up", InputKind::Digital},
+    {InputId::DpadDown, "D-pad Down", InputKind::Digital},
+    {InputId::DpadLeft, "D-pad Left", InputKind::Digital},
+    {InputId::DpadRight, "D-pad Right", InputKind::Digital},
 };
 
 const size_t kInputCount = sizeof(kInputs) / sizeof(kInputs[0]);
@@ -78,6 +86,14 @@ float normalizedForInput(InputId id, ControllerPtr ctl) {
             return ctl->miscStart() ? 1.0f : 0.0f;
         case InputId::ButtonSelect:
             return ctl->miscSelect() ? 1.0f : 0.0f;
+        case InputId::DpadUp:
+            return (ctl->dpad() & kDpadUpBit) ? 1.0f : 0.0f;
+        case InputId::DpadDown:
+            return (ctl->dpad() & kDpadDownBit) ? 1.0f : 0.0f;
+        case InputId::DpadLeft:
+            return (ctl->dpad() & kDpadLeftBit) ? 1.0f : 0.0f;
+        case InputId::DpadRight:
+            return (ctl->dpad() & kDpadRightBit) ? 1.0f : 0.0f;
         default:
             return 0.0f;
     }
@@ -115,6 +131,8 @@ InputId detectDominantInput(ControllerPtr ctl) {
                       {InputId::ButtonX, 0.5f, false},   {InputId::ButtonY, 0.5f, false},
                       {InputId::ButtonL1, 0.5f, false},  {InputId::ButtonR1, 0.5f, false},
                       {InputId::ButtonStart, 0.5f, false}, {InputId::ButtonSelect, 0.5f, false},
+                      {InputId::DpadUp, 0.5f, false},    {InputId::DpadDown, 0.5f, false},
+                      {InputId::DpadLeft, 0.5f, false},  {InputId::DpadRight, 0.5f, false},
                       {InputId::Throttle, 0.15f, false}, {InputId::Brake, 0.15f, false},
                       {InputId::AxisX, 0.25f, true},     {InputId::AxisY, 0.25f, true},
                       {InputId::AxisRX, 0.25f, true},    {InputId::AxisRY, 0.25f, true}};
