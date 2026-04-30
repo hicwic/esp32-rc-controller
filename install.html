@@ -105,20 +105,21 @@
       const versionTag = mode === "tag" ? tag : "latest";
       const url = `${baseUrl}/manifest-${board}.json`;
 
-      // Preferred path: ready-to-use ESP Web Tools manifest.
-      const manifest = await fetchJsonIfOk(url);
-      if (manifest) {
-        btn.manifest = url;
-        return;
-      }
-
-      // Fallback path: release metadata -> build manifest on the fly.
+      // Preferred path: release metadata -> build manifest on the fly.
+      // This avoids CORS issues when static manifests contain github.com asset URLs.
       const metaUrl = `${baseUrl}/rc-controller-${board}-meta.json`;
       const meta = await fetchJsonIfOk(metaUrl);
       if (meta) {
         const generated = metaToManifest(meta, versionTag, baseUrl, board);
         const blobUrl = URL.createObjectURL(new Blob([JSON.stringify(generated)], { type: "application/json" }));
         btn.manifest = blobUrl;
+        return;
+      }
+
+      // Fallback path: ready-to-use ESP Web Tools manifest.
+      const manifest = await fetchJsonIfOk(url);
+      if (manifest) {
+        btn.manifest = url;
         return;
       }
 
