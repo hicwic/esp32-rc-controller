@@ -26,7 +26,7 @@ No Python, PlatformIO, or terminal is required.
 ### Steps
 
 1. Open the installer page:
-   - `https://hicwic.github.io/esp32-rc-controller/install.html`
+   - [Installer page](https://hicwic.github.io/esp32-rc-controller/install.html)
 2. Select your board.
 3. Select channel:
    - `Latest release` for normal end-user updates.
