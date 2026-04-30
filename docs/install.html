@@ -26,11 +26,17 @@
         <option value="esp32dev">ESP32 Dev Module (esp32dev)</option>
         <option value="esp32-s3-devkitc-1">ESP32-S3 DevKitC-1</option>
       </select>
+      <label for="channel"><strong>Channel:</strong></label>
+      <select id="channel">
+        <option value="latest">Latest release</option>
+        <option value="tag">Nightly / specific tag</option>
+      </select>
+      <input id="tag" type="text" placeholder="nightly-YYYYMMDD-HHMM" style="padding:8px 10px;border-radius:8px;border:1px solid #bbb;min-width:240px;display:none">
       <esp-web-install-button id="installBtn"></esp-web-install-button>
     </div>
 
     <p class="hint">
-      The installer uses the latest GitHub release assets:
+      The installer flashes from a GitHub release manifest:
       <code>manifest-&lt;board&gt;.json</code>.
     </p>
     <p class="hint">
@@ -44,15 +50,36 @@
   <script>
     const ownerRepo = "hicwic/esp32-rc-controller";
     const boardSel = document.getElementById("board");
+    const channelSel = document.getElementById("channel");
+    const tagInput = document.getElementById("tag");
     const btn = document.getElementById("installBtn");
 
-    function setManifest(board) {
-      const url = `https://github.com/${ownerRepo}/releases/latest/download/manifest-${board}.json`;
+    function setManifest() {
+      const board = boardSel.value;
+      const mode = channelSel.value;
+      let url = `https://github.com/${ownerRepo}/releases/latest/download/manifest-${board}.json`;
+      if (mode === "tag") {
+        const tag = (tagInput.value || "").trim();
+        if (tag) {
+          url = `https://github.com/${ownerRepo}/releases/download/${tag}/manifest-${board}.json`;
+        }
+      }
       btn.manifest = url;
     }
 
-    boardSel.addEventListener("change", () => setManifest(boardSel.value));
-    setManifest(boardSel.value);
+    function updateTagVisibility() {
+      tagInput.style.display = channelSel.value === "tag" ? "" : "none";
+    }
+
+    boardSel.addEventListener("change", setManifest);
+    channelSel.addEventListener("change", () => {
+      updateTagVisibility();
+      setManifest();
+    });
+    tagInput.addEventListener("input", setManifest);
+
+    updateTagVisibility();
+    setManifest();
   </script>
 </body>
 </html>
