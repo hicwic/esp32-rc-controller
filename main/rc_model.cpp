@@ -87,6 +87,32 @@ float sourceValueByIndex(int8_t idx) {
     return g_virtualRuntime[idx];
 }
 
+int pwmFailsafeUs(PwmFailsafeMode mode) {
+    switch (mode) {
+        case PwmFailsafeMode::Min:
+            return kPwmMinUs;
+        case PwmFailsafeMode::Max:
+            return kPwmMaxUs;
+        default:
+            return kPwmNeutralUs;
+    }
+}
+
+PwmFailsafeMode pwmFailsafeModeFromPacked(uint8_t packed) {
+    // Backward compatibility: old presets only stored mix_mode(0/1), so "0"
+    // must keep the historical default (center).
+    if (packed == 0) {
+        return PwmFailsafeMode::Center;
+    }
+    if (packed == 1) {
+        return PwmFailsafeMode::Min;
+    }
+    if (packed == 2) {
+        return PwmFailsafeMode::Max;
+    }
+    return PwmFailsafeMode::Center;
+}
+
 bool isInputEnabledByModifier(const VirtualInputConfig& in, bool modifierPressed) {
     if (in.modifier == InputId::None) {
         return true;
@@ -472,14 +498,22 @@ void writeFailsafeForOutput(int index) {
         return;
     }
     if (g_outputs[index].type == ChannelType::Pwm) {
+        const int us = pwmFailsafeUs(g_outputs[index].pwmFailsafeMode);
         if (g_pwmAttached[index]) {
-            g_pwmOutputs[index].writeMicroseconds(kPwmNeutralUs);
+            g_pwmOutputs[index].writeMicroseconds(us);
+        }
+        if (us <= kPwmMinUs) {
+            g_outputRuntime[index] = -1.0f;
+        } else if (us >= kPwmMaxUs) {
+            g_outputRuntime[index] = 1.0f;
+        } else {
+            g_outputRuntime[index] = 0.0f;
         }
     } else {
         pinMode(g_outputs[index].pin, OUTPUT);
         digitalWrite(g_outputs[index].pin, LOW);
+        g_outputRuntime[index] = 0.0f;
     }
-    g_outputRuntime[index] = 0.0f;
 }
 
 void applyFailsafeAllOutputs() {
@@ -515,7 +549,9 @@ bool exportCurrentConfig(PersistedConfig* out) {
         cfg.channels[i].type = static_cast<uint8_t>(g_outputs[i].type);
         cfg.channels[i].pin = g_outputs[i].pin;
         cfg.channels[i].inverted = g_outputs[i].inverted ? 1 : 0;
-        cfg.channels[i].mix_mode = static_cast<uint8_t>(g_outputs[i].mixMode);
+        const uint8_t mixMode = static_cast<uint8_t>(g_outputs[i].mixMode) & 0x01;
+        const uint8_t failsafePacked = (static_cast<uint8_t>(g_outputs[i].pwmFailsafeMode) + 1) & 0x03;
+        cfg.channels[i].mix_mode = static_cast<uint8_t>(mixMode | (failsafePacked << 4));
         cfg.channels[i].source_a = g_outputs[i].sourceA;
         cfg.channels[i].source_b = g_outputs[i].sourceB;
         cfg.channels[i].source_c = g_outputs[i].sourceC;
@@ -661,7 +697,8 @@ bool applyPersistedConfig(const PersistedConfig& cfg, String* errorOut) {
         g_outputs[i].type = (pc.type == static_cast<uint8_t>(ChannelType::Switch)) ? ChannelType::Switch : ChannelType::Pwm;
         g_outputs[i].pin = pc.pin;
         g_outputs[i].inverted = pc.inverted != 0;
-        g_outputs[i].mixMode = (pc.mix_mode == static_cast<uint8_t>(MixMode::Multiply)) ? MixMode::Multiply : MixMode::Add;
+        g_outputs[i].mixMode = ((pc.mix_mode & 0x01) == static_cast<uint8_t>(MixMode::Multiply)) ? MixMode::Multiply : MixMode::Add;
+        g_outputs[i].pwmFailsafeMode = pwmFailsafeModeFromPacked((pc.mix_mode >> 4) & 0x03);
         g_outputs[i].sourceA = pc.source_a;
         g_outputs[i].sourceB = pc.source_b;
         g_outputs[i].sourceC = pc.source_c;

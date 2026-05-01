@@ -61,9 +61,13 @@ jobs:
         run: pip install --upgrade platformio "click<8.2"
 
       - name: Build firmware
+        env:
+          PROJECT_VER: ${{ needs.prepare.outputs.tag }}
         run: pio run -e "${{ matrix.env }}"
 
       - name: Build filesystem image
+        env:
+          PROJECT_VER: ${{ needs.prepare.outputs.tag }}
         run: pio run -e "${{ matrix.env }}" -t buildfs
 
       - name: Export board bundle
@@ -110,6 +114,34 @@ jobs:
           find release_assets -type f -exec cp {} out/ \;
           ls -la out
 
+      - name: Build release notes from CHANGELOG
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          version="${TAG#v}"
+          awk -v ver="$version" '
+            BEGIN { in_section=0; found=0 }
+            /^## \[/ {
+              if (in_section==1) exit
+              if ($0 ~ "^## \\[" ver "\\]") {
+                in_section=1
+                found=1
+                next
+              }
+            }
+            in_section==1 { print }
+            END {
+              if (found==0) {
+                exit 2
+              }
+            }
+          ' CHANGELOG.md > release_notes.md
+          if [ ! -s release_notes.md ]; then
+            echo "No changelog content found for ${TAG}" >&2
+            exit 3
+          fi
+
       - name: Prepare GitHub Pages payload
         shell: bash
         env:
@@ -136,5 +168,5 @@ jobs:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: ${{ needs.prepare.outputs.name }}
           prerelease: false
-          generate_release_notes: true
+          body_path: release_notes.md
           files: out/*

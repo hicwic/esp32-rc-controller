@@ -33,6 +33,12 @@ enum class MixMode : uint8_t {
     Multiply = 1,
 };
 
+enum class PwmFailsafeMode : uint8_t {
+    Min = 0,
+    Center = 1,
+    Max = 2,
+};
+
 struct VirtualInputConfig {
     bool used = false;
     InputId primary = InputId::None;
@@ -53,6 +59,7 @@ struct OutputChannelConfig {
     uint8_t pin = 0;
     bool inverted = false;
     int thresholdPercent = 50;
+    PwmFailsafeMode pwmFailsafeMode = PwmFailsafeMode::Center;
     int8_t sourceA = -1;
     int8_t sourceB = -1;
     int8_t sourceC = -1;

@@ -16,6 +16,9 @@ struct StateSnapshot {
     bool gamepadConnected;
     bool btScanActive;
     bool pairingEnabled;
+    bool failsafeActive;
+    String fwVersion;
+    String fwChannel;
     String currentModel;
     String bootModel;
     bool modelDirty;

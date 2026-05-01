@@ -57,10 +57,14 @@ jobs:
         run: pip install --upgrade platformio "click<8.2"
 
       - name: Build firmware
+        env:
+          PROJECT_VER: ${{ needs.prepare.outputs.tag }}
         run: pio run -e "${{ matrix.env }}"
 
       - name: Build filesystem image
         if: matrix.release_ready
+        env:
+          PROJECT_VER: ${{ needs.prepare.outputs.tag }}
         run: pio run -e "${{ matrix.env }}" -t buildfs
 
       - name: Export board bundle

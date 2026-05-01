@@ -46,7 +46,7 @@ void appendVirtualInput(JsonWriter& j, int index, const VirtualInputConfig& in, 
     j.endObject();
 }
 
-void appendOutput(JsonWriter& j, int index, const OutputChannelConfig& out, float runtime) {
+void appendOutput(JsonWriter& j, int index, const OutputChannelConfig& out, float runtime, bool failsafeActive) {
     j.beginObject();
     j.key("index");
     j.value(index);
@@ -84,6 +84,10 @@ void appendOutput(JsonWriter& j, int index, const OutputChannelConfig& out, floa
     j.value(out.thresholdPercent);
     j.key("inverted");
     j.value(out.inverted);
+    j.key("pwm_failsafe");
+    j.value(static_cast<int>(out.pwmFailsafeMode));
+    j.key("failsafe_active");
+    j.value(failsafeActive);
     j.key("signed_activity");
     j.value(runtime, 3);
     j.key("activity");
@@ -144,10 +148,16 @@ String buildStateJson(const StateSnapshot& s) {
     j.value(s.pairingEnabled);
     j.key("current_model");
     j.value(s.currentModel);
+    j.key("fw_version");
+    j.value(s.fwVersion);
+    j.key("fw_channel");
+    j.value(s.fwChannel);
     j.key("boot_model");
     j.value(s.bootModel);
     j.key("model_dirty");
     j.value(s.modelDirty);
+    j.key("failsafe");
+    j.value(s.failsafeActive);
 
     j.key("virtual_inputs");
     j.beginArray();
@@ -165,7 +175,7 @@ String buildStateJson(const StateSnapshot& s) {
         if (!s.outputs[i].used) {
             continue;
         }
-        appendOutput(j, i, s.outputs[i], s.outputRuntime[i]);
+        appendOutput(j, i, s.outputs[i], s.outputRuntime[i], s.failsafeActive);
     }
     j.endArray();
 
@@ -205,6 +215,12 @@ String buildActivityJson(const StateSnapshot& s) {
     j.value(s.btScanActive);
     j.key("pairing");
     j.value(s.pairingEnabled);
+    j.key("failsafe");
+    j.value(s.failsafeActive);
+    j.key("fw_version");
+    j.value(s.fwVersion);
+    j.key("fw_channel");
+    j.value(s.fwChannel);
 
     j.key("virtual_inputs");
     j.beginArray();
@@ -234,6 +250,8 @@ String buildActivityJson(const StateSnapshot& s) {
         j.value(i);
         j.key("signed_activity");
         j.value(s.outputRuntime[i], 3);
+        j.key("failsafe_active");
+        j.value(s.failsafeActive);
         j.key("active");
         j.value(fabsf(s.outputRuntime[i]) > kActiveThreshold);
         j.endObject();

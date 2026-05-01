@@ -9,6 +9,7 @@
 #include <WebServer.h>
 #include <WiFi.h>
 #include <esp_coexist.h>
+#include <esp_app_desc.h>
 #include <esp_wifi.h>
 
 #include "control_inputs.h"
@@ -82,6 +83,8 @@ String g_bootModelName = kPresetRcCar;
 String g_apSsid = kDefaultApSsid;
 String g_apPassword = kDefaultApPassword;
 bool g_modelDirty = false;
+String g_fwVersion = "dev-local";
+String g_fwChannel = "dev";
 
 WebServer g_server(80);
 DNSServer g_dnsServer;
@@ -134,6 +137,31 @@ const char* inputIdLabel(InputId id) {
 int pwmUsFromSignal(float signal) {
     const float clamped = constrain(signal, -1.0f, 1.0f);
     return static_cast<int>(lroundf(1500.0f + clamped * 500.0f));
+}
+
+bool startsWithReleaseTag(const String& s) {
+    if (s.length() < 2 || s[0] != 'v') {
+        return false;
+    }
+    const char c = s[1];
+    return c >= '0' && c <= '9';
+}
+
+void detectFirmwareVersionInfo() {
+    const esp_app_desc_t* d = esp_app_get_description();
+    String v = d ? String(d->version) : String();
+    v.trim();
+    if (v.isEmpty()) {
+        v = "dev-local";
+    }
+    g_fwVersion = v;
+    if (v.startsWith("nightly-")) {
+        g_fwChannel = "nightly";
+    } else if (startsWithReleaseTag(v)) {
+        g_fwChannel = "release";
+    } else {
+        g_fwChannel = "dev";
+    }
 }
 
 void emitIoTrace(ControllerPtr ctl) {
@@ -514,6 +542,7 @@ void parseOutputFromRequest(OutputChannelConfig* out, int existingIndex) {
     const int fallbackSourceB = out ? out->sourceB : -1;
     const int fallbackSourceC = out ? out->sourceC : -1;
     const int fallbackMixMode = out ? static_cast<int>(out->mixMode) : 1;
+    const int fallbackPwmFailsafe = out ? static_cast<int>(out->pwmFailsafeMode) : 1;
     const int fallbackWeightA = out ? out->weightA : 100;
     const int fallbackWeightB = out ? out->weightB : 0;
     const int fallbackWeightC = out ? out->weightC : 0;
@@ -532,6 +561,18 @@ void parseOutputFromRequest(OutputChannelConfig* out, int existingIndex) {
     out->sourceB = static_cast<int8_t>(constrain(parseIntArg("source_b", fallbackSourceB), -1, kMaxVirtualInputs - 1));
     out->sourceC = static_cast<int8_t>(constrain(parseIntArg("source_c", fallbackSourceC), -1, kMaxVirtualInputs - 1));
     out->mixMode = (parseIntArg("mix_mode", fallbackMixMode) == 1) ? rcctl::MixMode::Multiply : rcctl::MixMode::Add;
+    const int pwmFailsafe = constrain(parseIntArg("pwm_failsafe", fallbackPwmFailsafe), 0, 2);
+    switch (pwmFailsafe) {
+        case 0:
+            out->pwmFailsafeMode = rcctl::PwmFailsafeMode::Min;
+            break;
+        case 2:
+            out->pwmFailsafeMode = rcctl::PwmFailsafeMode::Max;
+            break;
+        default:
+            out->pwmFailsafeMode = rcctl::PwmFailsafeMode::Center;
+            break;
+    }
     out->weightA = static_cast<int8_t>(constrain(parseIntArg("weight_a", fallbackWeightA), -100, 100));
     out->weightB = static_cast<int8_t>(constrain(parseIntArg("weight_b", fallbackWeightB), -100, 100));
     out->weightC = static_cast<int8_t>(constrain(parseIntArg("weight_c", fallbackWeightC), -100, 100));
@@ -558,6 +599,9 @@ void handleApiState() {
         .gamepadConnected = (g_gamepad && g_gamepad->isConnected()),
         .btScanActive = g_btScanActive,
         .pairingEnabled = g_pairingScanEnabled,
+        .failsafeActive = g_signalTimedOut || !(g_gamepad && g_gamepad->isConnected()),
+        .fwVersion = g_fwVersion,
+        .fwChannel = g_fwChannel,
         .currentModel = g_currentModelName,
         .bootModel = g_bootModelName,
         .modelDirty = g_modelDirty,
@@ -582,6 +626,9 @@ void handleApiActivity() {
         .gamepadConnected = (g_gamepad && g_gamepad->isConnected()),
         .btScanActive = g_btScanActive,
         .pairingEnabled = g_pairingScanEnabled,
+        .failsafeActive = g_signalTimedOut || !(g_gamepad && g_gamepad->isConnected()),
+        .fwVersion = g_fwVersion,
+        .fwChannel = g_fwChannel,
         .currentModel = g_currentModelName,
         .bootModel = g_bootModelName,
         .modelDirty = g_modelDirty,
@@ -1058,6 +1105,7 @@ void setup() {
         nvs_flash_erase();
         nvsErr = nvs_flash_init();
     }
+    detectFirmwareVersionInfo();
 
     g_apSsid = loadApSsid();
     g_apPassword = loadApPassword();
