@@ -13,6 +13,7 @@ Thumbs.db
 .pioenvs/
 build/
 dist/
+release/
 cmake-build-*/
 *.map
 *.elf
