@@ -8,6 +8,11 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 ## [Unreleased]
 
 ### Added
+- (no entries yet)
+
+## [0.2.0] - 2026-05-01
+
+### Added
 - Output-level PWM failsafe mode selection:
   - `Min`
   - `Center` (default)

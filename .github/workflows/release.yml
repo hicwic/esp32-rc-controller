@@ -137,6 +137,13 @@ jobs:
               }
             }
           ' CHANGELOG.md > release_notes.md
+          rc=$?
+          if [ $rc -eq 2 ]; then
+            echo "Missing section in CHANGELOG.md: ## [${version}] (for tag ${TAG})" >&2
+            echo "Available sections:" >&2
+            grep -E "^## \\[" CHANGELOG.md >&2 || true
+            exit 2
+          fi
           if [ ! -s release_notes.md ]; then
             echo "No changelog content found for ${TAG}" >&2
             exit 3
