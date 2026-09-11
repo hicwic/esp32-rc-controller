@@ -1,0 +1,16 @@
+{
+  "env": "esp32-s3-devkitc-1",
+  "chip_family": "ESP32-S3",
+  "offsets": {
+    "bootloader": "0x0",
+    "partitions": "0x8000",
+    "firmware": "0x10000",
+    "filesystem": "0x220000"
+  },
+  "files": {
+    "bootloader": "rc-controller-esp32-s3-devkitc-1-bootloader.bin",
+    "partitions": "rc-controller-esp32-s3-devkitc-1-partitions.bin",
+    "firmware": "rc-controller-esp32-s3-devkitc-1-firmware.bin",
+    "filesystem": "rc-controller-esp32-s3-devkitc-1-spiffs.bin"
+  }
+}

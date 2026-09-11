@@ -1,0 +1,16 @@
+{
+  "env": "esp32dev",
+  "chip_family": "ESP32",
+  "offsets": {
+    "bootloader": "0x1000",
+    "partitions": "0x8000",
+    "firmware": "0x10000",
+    "filesystem": "0x220000"
+  },
+  "files": {
+    "bootloader": "rc-controller-esp32dev-bootloader.bin",
+    "partitions": "rc-controller-esp32dev-partitions.bin",
+    "firmware": "rc-controller-esp32dev-firmware.bin",
+    "filesystem": "rc-controller-esp32dev-spiffs.bin"
+  }
+}
