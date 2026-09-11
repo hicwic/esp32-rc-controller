@@ -58,7 +58,14 @@ jobs:
           python-version: "3.11"
 
       - name: Install PlatformIO
-        run: pip install --upgrade platformio "click<8.2"
+        # Pinned: PlatformIO Core 6.2.0 requires tool-scons ~4.11.1, but the
+        # pinned pioarduino/platform-espressif32 release still declares
+        # tool-scons 4.8.1. The mismatch makes the package manager swap
+        # tool-scons mid-build, which corrupts the running SCons process
+        # (surfaces as "ModuleNotFoundError: No module named
+        # 'SCons.Tool.FortranCommon'"). 6.1.19 is the last release that
+        # expects 4.8.1, matching this platform pin.
+        run: pip install "platformio==6.1.19" "click<8.2"
 
       - name: Build firmware
         env:
