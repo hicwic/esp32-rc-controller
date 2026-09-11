@@ -14,7 +14,33 @@ jobs:
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
       name: ${{ steps.meta.outputs.name }}
+      should_run: ${{ steps.check.outputs.should_run }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Check for new commits since last nightly
+        id: check
+        shell: bash
+        run: |
+          last_tag="$(git tag --list 'nightly-*' --sort=-creatordate | head -n1)"
+          if [ -z "$last_tag" ]; then
+            echo "No previous nightly tag found, running."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            last_sha="$(git rev-list -n1 "$last_tag")"
+            head_sha="$(git rev-parse HEAD)"
+            if [ "$last_sha" = "$head_sha" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "HEAD ($head_sha) matches last nightly tag $last_tag, nothing new to build."
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "should_run=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
       - name: Compute nightly metadata
         id: meta
         shell: bash
@@ -27,6 +53,7 @@ jobs:
 
   build:
     needs: prepare
+    if: needs.prepare.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -92,6 +119,7 @@ jobs:
 
   release:
     needs: [prepare, build]
+    if: needs.prepare.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
